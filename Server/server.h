@@ -24,7 +24,9 @@ private:
 	QHostAddress *mHostAddress;
 
 private slots:
-	void onSettingsClicked();
+	void onClickedActionSettings();
+	void onClickedActionStart();
+	void onClickedActionStop();
 
 };
 

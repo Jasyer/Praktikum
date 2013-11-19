@@ -17,6 +17,9 @@ public:
 
 private:
 	Ui::DialogServerSettings *ui;
+
+private slots:
+	void onClickedButtonOK();
 };
 
 #endif // DIALOGSERVERSETTINGS_H

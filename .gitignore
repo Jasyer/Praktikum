@@ -14,3 +14,4 @@
 
 # Created by Qt Creator
 *.user
+build-*

@@ -14,10 +14,13 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         server.cpp \
-    dialogserversettings.cpp
+    dialogserversettings.cpp \
+    serversettings.cpp
 
 HEADERS  += server.h \
-    dialogserversettings.h
+    dialogserversettings.h \
+    stringconstants.h \
+    serversettings.h
 
 FORMS    += server.ui \
     dialogserversettings.ui

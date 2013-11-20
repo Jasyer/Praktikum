@@ -11,6 +11,9 @@ DialogServerSettings::DialogServerSettings(QWidget *parent) :
 
 	connect(ui->buttonOK, SIGNAL(clicked()), SLOT(onClickedButtonOK()));
 	connect(ui->buttomCancel, SIGNAL(clicked()), SLOT(reject()));
+
+	ui->textIP->setText(ServerSettings::currentSettings()->get(textServerIP));
+	ui->textPort->setText(ServerSettings::currentSettings()->get(textServerPort));
 }
 
 DialogServerSettings::~DialogServerSettings()

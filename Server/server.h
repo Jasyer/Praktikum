@@ -4,6 +4,9 @@
 #include <QMainWindow>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include "serversettings.h"
+
+#define M_SETTING(q) ServerSettings::currentSettings()->get(q)
 
 namespace Ui {
 class Server;
@@ -20,13 +23,18 @@ public:
 private:
 	Ui::Server *ui;
 
-	QTcpServer *mServer;
-	QHostAddress *mHostAddress;
+	QTcpServer mServer;
+
+	void printLog(const QString &text);
 
 private slots:
+	// gui slots
 	void onClickedActionSettings();
 	void onClickedActionStart();
 	void onClickedActionStop();
+
+	// server slots
+	void onErrorAccepted(QAbstractSocket::SocketError e);
 
 };
 

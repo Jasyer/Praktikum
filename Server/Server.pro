@@ -11,16 +11,20 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = Server
 TEMPLATE = app
 
+INCLUDEPATH += ../include
+LIBS += ../lib/Cryptograph.lib
 
 SOURCES += main.cpp\
         server.cpp \
     dialogserversettings.cpp \
-    serversettings.cpp
+    serversettings.cpp \
+    serverlistener.cpp
 
 HEADERS  += server.h \
     dialogserversettings.h \
     stringconstants.h \
-    serversettings.h
+    serversettings.h \
+    serverlistener.h
 
 FORMS    += server.ui \
     dialogserversettings.ui

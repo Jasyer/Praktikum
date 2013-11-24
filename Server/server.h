@@ -5,6 +5,7 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include "serversettings.h"
+#include "serverlistener.h"
 
 #define M_SETTING(q) ServerSettings::currentSettings()->get(q)
 
@@ -24,7 +25,7 @@ private:
 	Ui::Server *ui;
 
 	QTcpServer mServer;
-
+	QHash<int, ServerListener *> mClients;
 	void printLog(const QString &text);
 
 private slots:
@@ -35,7 +36,7 @@ private slots:
 
 	// server slots
 	void onErrorAccepted(QAbstractSocket::SocketError e);
-
+	void onNewConnection();
 };
 
 #endif // SERVER_H

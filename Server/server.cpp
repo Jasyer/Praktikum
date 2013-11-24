@@ -21,6 +21,7 @@ Server::Server(QWidget *parent) :
 	// connections of server signals
 	connect(&mServer, SIGNAL(acceptError(QAbstractSocket::SocketError)),
 			SLOT(onErrorAccepted(QAbstractSocket::SocketError)));
+	connect(&mServer, SIGNAL(newConnection()), SLOT(onNewConnection()));
 }
 
 Server::~Server()
@@ -35,6 +36,7 @@ Server::~Server()
 void Server::printLog(const QString &text)
 {
 	QDateTime time = QDateTime::currentDateTime();
+	ui->textServerLog->moveCursor(QTextCursor::End);
 	ui->textServerLog->insertPlainText("[" + time.toString("hh:mm:ss:zzz") + "] " + text + "\n");
 //	ui->textServerLog->insertHtml("<span style=\" color:#ff0000;\">text</span>");
 }
@@ -60,6 +62,15 @@ void Server::onClickedActionStart()
 	if (mServer.listen(QHostAddress(servIP), (quint16) servPort.toInt()))
 		printLog("Success");
 
+	QTcpSocket sok;
+	sok.connectToHost(servIP, servPort.toInt());
+	char b[5];
+	b[0] = 0x01;
+	b[1] = 0x02;
+	b[2] = 0x03;
+	b[3] = 0x04;
+	b[4] = 0x05;
+	sok.write(b, 5);
 }
 
 /**
@@ -75,3 +86,11 @@ void Server::onErrorAccepted(QAbstractSocket::SocketError e)
 {
 	printLog("Server Error: " + e);
 }
+
+void Server::onNewConnection()
+{
+	QTcpSocket *socket = mServer.nextPendingConnection();
+	ServerListener *client = new ServerListener(socket);
+	mClients.insert(socket->socketDescriptor(), client);
+}
+

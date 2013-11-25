@@ -1,6 +1,7 @@
 #include "clientlistener.h"
 #include <QHostAddress>
 #include "../include/commands.h"
+#include <QTextCodec>
 
 ClientListener::ClientListener()
 {
@@ -67,10 +68,7 @@ void ClientListener::onReadyRead()
 	mData.type = readUInt16();
 	mData.size -= 2;
 
-	char *buf = new char[mData.size];
-	mSocket.read(buf, mData.size);
-	mData.data = QByteArray::fromRawData(buf, mData.size);
-	delete []buf;
+	mData.data = mSocket.read(mData.size);
 
 	parseInputData();
 
@@ -102,7 +100,7 @@ void ClientListener::parseInputData()
 	switch(mData.type)
 	{
 	case TYPE_TEXT_MESSAGE:
-		parseTextMessage(QString(mData.data));
+		parseTextMessage(QTextCodec::codecForLocale()->toUnicode(mData.data));
 		break;
 	}
 	mData.flush();

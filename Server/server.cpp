@@ -35,9 +35,9 @@ Server::~Server()
  */
 void Server::printLog(const QString &text)
 {
-	QDateTime time = QDateTime::currentDateTime();
+	QTime time = QTime::currentTime();
 	ui->textServerLog->moveCursor(QTextCursor::End);
-	ui->textServerLog->insertPlainText("[" + time.toString("hh:mm:ss:zzz") + "] " + text + "\n");
+	ui->textServerLog->insertPlainText(time.toString("[hh:mm:ss.zzz] ") + text + "\n");
 //	ui->textServerLog->insertHtml("<span style=\" color:#ff0000;\">text</span>");
 }
 

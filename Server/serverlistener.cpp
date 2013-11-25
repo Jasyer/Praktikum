@@ -14,6 +14,7 @@ ServerListener::ServerListener(QTcpSocket *socket)
 	connect(mSocket, SIGNAL(readyRead()), SLOT(onReadyRead()));
 
 	sendText("Hello world!");
+	sendText("Бугагашеньки!");
 }
 
 void ServerListener::onDisconnected()

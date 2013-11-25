@@ -19,8 +19,9 @@ Client::~Client()
 
 void Client::printLog(const QString &text)
 {
-	QString time = QTime::currentTime().toString("hh:mm:ss");
-	ui->textClientLog->insertPlainText("[" + time + "] " + text + "\n");
+	QTime time = QTime::currentTime();
+	ui->textClientLog->moveCursor(QTextCursor::End);
+	ui->textClientLog->insertPlainText(time.toString("[hh:mm:ss.zzz] ") + text + "\n");
 }
 
 void Client::connectSignalsFromServerListener()

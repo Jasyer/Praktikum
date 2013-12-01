@@ -13,13 +13,15 @@ public:
 	QByteArray toByteArray() const;
 
 private:
-	Long mCliendID;
+	//Long mCliendID;
+	QString mName;
 	Long mPublicKey;
 	QDateTime mLifeTime;
 	bool mValid;
 	QList<QString> mAvailableHashList;
 	QList<QString> mAvailableCypherList;
 
+	QByteArray toByteArrayWithoutSign() const;
 
 };
 

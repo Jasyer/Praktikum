@@ -23,6 +23,7 @@ private slots:
 	 * gui slots
 	 */
 	void onButtonConnectClicked();
+	void onButtonDisconnectClicked();
 	void onButtonLogInClicked();
 
 	/*

@@ -54,6 +54,7 @@ class ClientListener : public QObject
 public:
 	explicit ClientListener(const Long &privateKey, const Long &publicKey, Client *parent);
 	void connectToHost(const QString &IP, const QString &port);
+	void disconnectFromHost();
 	void login(const Long &hashPIN);
 
 signals:
@@ -61,7 +62,7 @@ signals:
 	void error(const QString &text);
 	void disconnected();
 	void message(const QString &msg);
-	void logined();
+	void loginned();
 
 	void recheckForReadyRead();
 

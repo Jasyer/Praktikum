@@ -16,6 +16,7 @@ Client::Client(QWidget *parent) :
 
 	connect(ui->buttonConnect, SIGNAL(clicked()), SLOT(onButtonConnectClicked()));
 	connect(ui->buttonLogIn, SIGNAL(clicked()), SLOT(onButtonLogInClicked()));
+	connect(ui->buttonDisconnect, SIGNAL(clicked()), SLOT(onButtonDisconnectClicked()));
 
 	QTimer::singleShot(0, this, SLOT(makePrivatePublicKey()));
 }
@@ -64,11 +65,25 @@ void Client::makePrivatePublicKey()
 
 void Client::onButtonConnectClicked()
 {
-	ui->textClientLog->moveCursor(QTextCursor::End);
-	printLog("Connecting to " + ui->textIP->text() + ":" + ui->textPort->text() + "...");
+	ui->buttonConnect->setEnabled(false);
+	ui->textIP->setEnabled(false);
+	ui->textPort->setEnabled(false);
+
 	mClientListener = new ClientListener(mPrivateKey, mPublicKey, this);
 	connectSignalsFromServerListener();
 	mClientListener->connectToHost(ui->textIP->text(), ui->textPort->text());
+}
+
+void Client::onButtonDisconnectClicked()
+{
+	ui->buttonDisconnect->setEnabled(false);
+
+	mClientListener->disconnectFromHost();
+	delete mClientListener;
+
+	ui->buttonConnect->setEnabled(true);
+	ui->textIP->setEnabled(true);
+	ui->textPort->setEnabled(true);
 }
 
 #include <QInputDialog>
@@ -91,11 +106,17 @@ void Client::onButtonLogInClicked()
 
 void Client::onConnected()
 {
-	printLog("Success");
+	printLog("OK. Connected");
+
+	ui->buttonDisconnect->setEnabled(true);
 }
 void Client::onError(const QString &text)
 {
 	printLog("Error: " + text);
+	ui->buttonConnect->setEnabled(true);
+	ui->buttonDisconnect->setEnabled(false);
+	ui->textIP->setEnabled(true);
+	ui->textPort->setEnabled(true);
 }
 void Client::onMessage(const QString &text)
 {

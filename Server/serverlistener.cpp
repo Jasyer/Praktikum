@@ -94,7 +94,7 @@ QString fromInt(int n)
 
 void ServerListener::sendData(quint16 type, const QByteArray &data)
 {
-	mParent->printLog("SENDING " + fromInt(type));
+	//mParent->printLog("SENDING " + fromInt(type));
 
 	quint32 size = data.size() + 2;
 	writeUInt32(size);

@@ -28,10 +28,17 @@ void ClientListener::connectToHost(const QString &IP, const QString &port)
 	connect(this, SIGNAL(recheckForReadyRead()), SLOT(onReadyRead()));
 
 	mAddress = IP + ":" + port;
+	mParent->printLog("Connecting to " + mAddress + "...");
 	mSocket.connectToHost((QHostAddress) IP, (quint16) port.toInt());
 
 	mState.waiting = true;
 	mState.waitingType = STATE_READY;
+}
+
+void ClientListener::disconnectFromHost()
+{
+	mSocket.close();
+	mParent->printLog("OK. Disconnected");
 }
 
 void ClientListener::login(const Long &hashPIN)
@@ -112,7 +119,7 @@ QString fromInt(int n)
 
 void ClientListener::sendData(quint16 type, const QByteArray &data)
 {
-	mParent->printLog("SENDING " + fromInt(type));
+	//mParent->printLog("SENDING " + fromInt(type));
 
 	// size section
 	{

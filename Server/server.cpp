@@ -4,6 +4,11 @@
 #include "stringconstants.h"
 #include <QDateTime>
 #include <QDebug>
+#include "longlibrary.h"
+#include "dialogdatabaseitemedit.h"
+#include <QTimer>
+#include "cryptoconstants.h"
+#include "cryptograph.h"
 
 Server::Server(QWidget *parent) :
     QMainWindow(parent),
@@ -17,11 +22,15 @@ Server::Server(QWidget *parent) :
 	connect(ui->actionSettings, SIGNAL(triggered()), SLOT(onClickedActionSettings()));
 	connect(ui->actionStart, SIGNAL(triggered()), SLOT(onClickedActionStart()));
 	connect(ui->actionStop, SIGNAL(triggered()), SLOT(onClickedActionStop()));
+	connect(ui->actionAddItem, SIGNAL(triggered()), SLOT(onClickedActionDatabaseAddItem()));
+	connect(ui->actionRemoveItem, SIGNAL(triggered()), SLOT(onClickedActionDatabaseRemoveItem()));
 
 	// connections of server signals
 	connect(&mServer, SIGNAL(acceptError(QAbstractSocket::SocketError)),
 			SLOT(onErrorAccepted(QAbstractSocket::SocketError)));
 	connect(&mServer, SIGNAL(newConnection()), SLOT(onNewConnection()));
+
+	QTimer::singleShot(0, this, SLOT(makePrivatePublicKeys()));
 }
 
 Server::~Server()
@@ -37,8 +46,21 @@ void Server::printLog(const QString &text)
 {
 	QTime time = QTime::currentTime();
 	ui->textServerLog->moveCursor(QTextCursor::End);
-	ui->textServerLog->insertPlainText(time.toString("[hh:mm:ss.zzz] ") + text + "\n");
-//	ui->textServerLog->insertHtml("<span style=\" color:#ff0000;\">text</span>");
+	if (!ui->textServerLog->textCursor().atStart())
+		ui->textServerLog->insertPlainText("\n");
+	ui->textServerLog->insertPlainText(time.toString("[hh:mm:ss.zzz] ") + text);
+	ui->textServerLog->moveCursor(QTextCursor::End);
+	//ui->textServerLog->scroll(0, ui->textServerLog->contentsRect().size().height() - );
+	//	ui->textServerLog->insertHtml("<span style=\" color:#ff0000;\">text</span>");
+}
+
+bool Server::loginUser(const Long &hashPIN)
+{
+	ClientInfo info = mClientsBase.find(hashPIN);
+	if (info.isNull())
+		return false;
+	else
+		return true;
 }
 
 /**
@@ -61,16 +83,6 @@ void Server::onClickedActionStart()
 
 	if (mServer.listen(QHostAddress(servIP), (quint16) servPort.toInt()))
 		printLog("Success");
-
-	QTcpSocket sok;
-	sok.connectToHost(servIP, servPort.toInt());
-	char b[5];
-	b[0] = 0x01;
-	b[1] = 0x02;
-	b[2] = 0x03;
-	b[3] = 0x04;
-	b[4] = 0x05;
-	sok.write(b, 5);
 }
 
 /**
@@ -82,6 +94,19 @@ void Server::onClickedActionStop()
 	printLog("Server stopped");
 }
 
+void Server::onClickedActionDatabaseAddItem()
+{
+	DialogDatabaseItemEdit dial;
+	connect(&dial, SIGNAL(databaseNewItem(QString,Long)),
+			SLOT(onDatabaseAddNewItem(QString,Long)));
+	dial.exec();
+}
+
+void Server::onClickedActionDatabaseRemoveItem()
+{
+
+}
+
 void Server::onErrorAccepted(QAbstractSocket::SocketError e)
 {
 	printLog("Server Error: " + e);
@@ -90,7 +115,37 @@ void Server::onErrorAccepted(QAbstractSocket::SocketError e)
 void Server::onNewConnection()
 {
 	QTcpSocket *socket = mServer.nextPendingConnection();
-	ServerListener *client = new ServerListener(socket);
+	ServerListener *client = new ServerListener(socket, mPrivateKey, mPublicKey, this);
 	mClients.insert(socket->socketDescriptor(), client);
+}
+
+void Server::onDatabaseAddNewItem(const QString &name, const Long &hashPIN)
+{
+	mClientsBase.add(hashPIN, ClientInfo(name));
+	ui->tableDatabase->setRowCount(ui->tableDatabase->rowCount() + 1);
+	QTableWidgetItem *newItemName = new QTableWidgetItem(name);
+	ui->tableDatabase->setItem(ui->tableDatabase->rowCount() - 1, 0, newItemName);
+	QTableWidgetItem *newItemHashPIN = new QTableWidgetItem(hashPIN.toString());
+	ui->tableDatabase->setItem(ui->tableDatabase->rowCount() - 1, 1, newItemHashPIN);
+}
+
+void Server::makePrivatePublicKeys()
+{
+	printLog("Generating private key...");
+	// private key
+	int random_bits_size = GROUP_PRIME.getSize();
+	char *random_bits = new char[random_bits_size];
+	drbg_generate(random_bits, random_bits_size);
+	mPrivateKey = Long(random_bits, random_bits_size);
+	mPrivateKey.setModule(GROUP_PRIME);
+	delete []random_bits;
+
+	printLog("Calculating public key...");
+	// public key
+	mPublicKey = GROUP_GENERATOR;
+	mPublicKey.setModule(GROUP_PRIME);
+	mPublicKey.pow(mPrivateKey);
+
+	printLog("OK. Private & public keys generated");
 }
 

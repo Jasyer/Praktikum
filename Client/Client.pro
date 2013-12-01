@@ -12,7 +12,7 @@ TARGET = Client
 TEMPLATE = app
 
 INCLUDEPATH += ../include
-LIBS += ../lib/Cryptograph.lib
+LIBS += ../lib/libCryptograph.a ../lib/libLongLibrary.a
 
 SOURCES += main.cpp\
         client.cpp \
@@ -20,6 +20,7 @@ SOURCES += main.cpp\
 
 HEADERS  += client.h \
     ../include/commands.h \
-    clientlistener.h
+    clientlistener.h \
+    ../include/cryptoconstants.h
 
 FORMS    += client.ui

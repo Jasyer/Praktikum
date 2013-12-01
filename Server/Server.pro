@@ -12,19 +12,30 @@ TARGET = Server
 TEMPLATE = app
 
 INCLUDEPATH += ../include
-LIBS += ../lib/Cryptograph.lib
+LIBS += ../lib/libCryptograph.a ../lib/libLongLibrary.a
 
 SOURCES += main.cpp\
         server.cpp \
     dialogserversettings.cpp \
     serversettings.cpp \
-    serverlistener.cpp
+    serverlistener.cpp \
+    database.cpp \
+    certificate.cpp \
+    clientsbase.cpp \
+    dialogdatabaseitemedit.cpp
 
 HEADERS  += server.h \
     dialogserversettings.h \
     stringconstants.h \
     serversettings.h \
-    serverlistener.h
+    serverlistener.h \
+    database.h \
+    certificate.h \
+    clientsbase.h \
+    dialogdatabaseitemedit.h \
+    ../include/cryptoconstants.h \
+    ../include/commands.h
 
 FORMS    += server.ui \
-    dialogserversettings.ui
+    dialogserversettings.ui \
+    dialogdatabaseitemedit.ui

@@ -8,12 +8,21 @@
 class ClientInfo
 {
 public:
-	ClientInfo() : mValid(false) {}
-	ClientInfo(const QString &name) : mValid(true), mName(name){}
-	static ClientInfo nullInfo();
-	bool isNull();
+	ClientInfo() : mNull(true) {}
+
+	ClientInfo(const QString &name, const Long &clientID) : mCliendID(clientID), mName(name) {}
+	ClientInfo(const QString &name);
+	bool isNull() const;
+	Long clientID() const;
+	QString name() const;
+
+	static const ClientInfo nullInfo();
+
+	bool operator<(const ClientInfo &info) const;
+
 private:
-	bool mValid;
+	bool mNull;
+	Long mCliendID;
 	QString mName;
 };
 

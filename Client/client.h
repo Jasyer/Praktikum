@@ -3,7 +3,8 @@
 
 #include <QMainWindow>
 #include "clientlistener.h"
-#include  "longlibrary.h"
+#include "longlibrary.h"
+#include "certificate.h"
 
 namespace Ui {
 class Client;
@@ -18,6 +19,7 @@ public:
 	~Client();
 	void printLog(const QString &text);
 
+
 private slots:
 	/*
 	 * gui slots
@@ -25,6 +27,7 @@ private slots:
 	void onButtonConnectClicked();
 	void onButtonDisconnectClicked();
 	void onButtonLogInClicked();
+	void onButtonGetCertificatesClicked();
 
 	/*
 	 * ClientListener slots
@@ -32,6 +35,7 @@ private slots:
 	void onConnected();
 	void onError(const QString &text);
 	void onMessage(const QString &text);
+	void onRecievedCertificates(const QList<Certificate> &list);
 
 	/*
 	 * other slots
@@ -45,6 +49,8 @@ private:
 
 	Long mPrivateKey;
 	Long mPublicKey;
+
+	QList<Certificate> mCertificates;
 };
 
 #endif // CLIENT_H

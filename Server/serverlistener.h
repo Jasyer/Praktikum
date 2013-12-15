@@ -2,6 +2,7 @@
 #define CLIENTLISTENER_H
 #include <QTcpSocket>
 #include "longlibrary.h"
+#include "certificate.h"
 
 struct InputData
 {
@@ -51,17 +52,26 @@ class ServerListener : public QObject
 
 public:
 	ServerListener(QTcpSocket *socket, const Long &privateKey, const Long &publicKey,
-				   Server *parent);
+				   Server *parent, bool connectToServer = false);
+	void connectToServer(const QString &IP, const QString &port);
+	~ServerListener();
 
 signals:
+	void addCertificates(const QList<Certificate> &certificates);
+	void deleteMe();
 	void message(const QString &text, int socket);
 	void checkForBytesAvailable();
 
 private slots:
+	void onConnected();
+	void onError(const QAbstractSocket::SocketError &e);
 	void onDisconnected();
 	void onReadyRead();
 
 private:
+	bool mConnectToServer;
+	QString mConnectToServerAddress;
+
 	Server *mParent;
 	QTcpSocket *mSocket;
 	int mSocketID;
@@ -74,7 +84,9 @@ private:
 	void sendAnswer(quint16 type, quint16 answer);
 	void sendData(quint16 type, const QByteArray &data);
 	void sendText(const QString &text);
+
 	void sendPublicKeys();
+	void sendCertificates();
 
 	quint32 readUInt32();
 	quint16 readUInt16();
@@ -82,8 +94,11 @@ private:
 	void writeUInt16(quint16 n);
 
 	void parseInputData();
-	void parsePublicKeys(const QByteArray &byteArray);
+	bool parsePublicKeys(const QByteArray &byteArray);
 	void parseLogin(const QByteArray &byteArray);
+
+	void parseInputDataFromAnotherServer();
+	void parseCertificates(const QByteArray &byteArray); // if mConnectToServer
 
 	void makeSessionKeys();
 	void makeKey(const ConnectionKeys &keys);

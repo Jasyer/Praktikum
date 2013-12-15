@@ -41,6 +41,7 @@ public:
 	static Long firstBytesOf(const Long &l, quint16 bytes);
 	static Long fromByteArray(const QByteArray &byteArray);
 	static bool isLong(const QByteArray &byteArray);
+	static Long getInversed(const Long &l);
 
 private:
 	quint8 *data;
@@ -49,12 +50,15 @@ private:
 
 	quint32 countOfBits() const;
 	void mod(const Long &_long);
-	void delete_first_zero_bytes();
 	bool sub(const Long &l);
+	void delete_first_zero_bytes();
+	bool sub_mini(const Long &l);
 	bool shr();
-
+	friend void div_mod(const Long &_l1, const Long &_l2, Long *div, Long *mod);
 	friend Long multiplicate_mini(const Long &l, quint8 num);
-	friend Long devide_mini(const Long &_l1, const Long &_l2);
+	friend Long devide_mini(const Long &_l1, const Long &_l2, quint8 *ans);
 };
+
+void div_mod(const Long &_l1, const Long &_l2, Long *div, Long *mod);
 
 #endif // LONGLIBRARY_H

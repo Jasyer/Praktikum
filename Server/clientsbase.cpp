@@ -1,4 +1,5 @@
 #include "clientsbase.h"
+#include "cryptograph.h"
 
 ClientsBase::ClientsBase()
 {
@@ -22,12 +23,34 @@ ClientInfo ClientsBase::find(const Long &hashKey)
 }
 
 
-ClientInfo ClientInfo::nullInfo()
+ClientInfo::ClientInfo(const QString &name) : mNull(false), mName(name)
+{
+	char buf[8];
+	drbg_generate(buf, 8);
+	mCliendID = Long(buf, 8);
+}
+
+const ClientInfo ClientInfo::nullInfo()
 {
 	return ClientInfo();
 }
 
-bool ClientInfo::isNull()
+bool ClientInfo::operator<(const ClientInfo &info) const
 {
-	return (mValid == false);
+	return mCliendID < info.clientID();
+}
+
+bool ClientInfo::isNull() const
+{
+	return mNull;
+}
+
+Long ClientInfo::clientID() const
+{
+	return mCliendID;
+}
+
+QString ClientInfo::name() const
+{
+	return mName;
 }

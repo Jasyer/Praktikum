@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QTcpSocket>
 #include "longlibrary.h"
+#include "certificate.h"
 
 struct InputData
 {
@@ -56,6 +57,7 @@ public:
 	void connectToHost(const QString &IP, const QString &port);
 	void disconnectFromHost();
 	void login(const Long &hashPIN);
+	void getCertificates();
 
 signals:
 	void connected();
@@ -63,6 +65,7 @@ signals:
 	void disconnected();
 	void message(const QString &msg);
 	void loginned();
+	void recievedCertificates(const QList<Certificate> &list);
 
 	void recheckForReadyRead();
 
@@ -101,6 +104,7 @@ private:
 	bool parseTextMessage(const QString &text);
 	bool parsePublicKeys(const QByteArray &byteArray);
 	bool parseLoginStatus(const QByteArray &byteArray);
+	bool parseCertificates(const QByteArray &byteArray);
 
 	/*
 	 * Other

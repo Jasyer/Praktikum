@@ -12,14 +12,14 @@ class DialogServerSettings : public QDialog
 	Q_OBJECT
 
 public:
-	explicit DialogServerSettings(QWidget *parent = 0);
+	explicit DialogServerSettings(bool pasteSettings = true, QWidget *parent = 0);
+	QString getIP() const;
+	QString getPort() const;
+
 	~DialogServerSettings();
 
 private:
 	Ui::DialogServerSettings *ui;
-
-private slots:
-	void onClickedButtonOK();
 };
 
 #endif // DIALOGSERVERSETTINGS_H

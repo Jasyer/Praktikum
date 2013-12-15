@@ -11,16 +11,18 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = Client
 TEMPLATE = app
 
-INCLUDEPATH += ../include
+INCLUDEPATH += ../include ../Common
 LIBS += ../lib/libCryptograph.a ../lib/libLongLibrary.a
 
 SOURCES += main.cpp\
         client.cpp \
-    clientlistener.cpp
+    clientlistener.cpp \
+    ../Common/certificate.cpp
 
 HEADERS  += client.h \
     ../include/commands.h \
     clientlistener.h \
-    ../include/cryptoconstants.h
+    ../include/cryptoconstants.h \
+    ../Common/certificate.h
 
 FORMS    += client.ui

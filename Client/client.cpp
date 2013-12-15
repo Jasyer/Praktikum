@@ -6,6 +6,7 @@
 #include "longlibrary.h"
 #include <QTextCodec>
 #include <QTimer>
+#include <QListWidget>
 
 Client::Client(QWidget *parent) :
 	QMainWindow(parent),
@@ -17,6 +18,7 @@ Client::Client(QWidget *parent) :
 	connect(ui->buttonConnect, SIGNAL(clicked()), SLOT(onButtonConnectClicked()));
 	connect(ui->buttonLogIn, SIGNAL(clicked()), SLOT(onButtonLogInClicked()));
 	connect(ui->buttonDisconnect, SIGNAL(clicked()), SLOT(onButtonDisconnectClicked()));
+	connect(ui->buttonGetCertificates, SIGNAL(clicked()), SLOT(onButtonGetCertificatesClicked()));
 
 	QTimer::singleShot(0, this, SLOT(makePrivatePublicKey()));
 }
@@ -38,9 +40,18 @@ void Client::printLog(const QString &text)
 
 void Client::connectSignalsFromServerListener()
 {
-	connect(mClientListener, SIGNAL(connected()), SLOT(onConnected()));
-	connect(mClientListener, SIGNAL(error(QString)), SLOT(onError(QString)));
-	connect(mClientListener, SIGNAL(message(QString)), SLOT(onMessage(QString)));
+	connect(mClientListener,
+			SIGNAL(connected()),
+			SLOT(onConnected()));
+	connect(mClientListener,
+			SIGNAL(error(QString)),
+			SLOT(onError(QString)));
+	connect(mClientListener,
+			SIGNAL(message(QString)),
+			SLOT(onMessage(QString)));
+	connect(mClientListener,
+			SIGNAL(recievedCertificates(QList<Certificate>)),
+			SLOT(onRecievedCertificates(QList<Certificate>)));
 }
 
 void Client::makePrivatePublicKey()
@@ -104,6 +115,11 @@ void Client::onButtonLogInClicked()
 	mClientListener->login(PIN);
 }
 
+void Client::onButtonGetCertificatesClicked()
+{
+	mClientListener->getCertificates();
+}
+
 void Client::onConnected()
 {
 	printLog("OK. Connected");
@@ -121,4 +137,30 @@ void Client::onError(const QString &text)
 void Client::onMessage(const QString &text)
 {
 	printLog("Server: " + text);
+}
+
+void Client::onRecievedCertificates(const QList<Certificate> &list)
+{
+	ui->listCertValid->clear();
+	ui->listCertInvoked->clear();
+	mCertificates = list;
+	int validCount = 0;
+	int invokedCount = 0;
+	for (int i = 0; i < mCertificates.count(); ++i)
+	{
+		Certificate cert = mCertificates[i];
+		QString line = cert.name();
+		if (mCertificates[i].invoked())
+		{
+			ui->listCertInvoked->insertItem(ui->listCertInvoked->count(), line);
+			++invokedCount;
+		}
+		else
+		{
+			ui->listCertValid->insertItem(ui->listCertValid->count(), line);
+			++validCount;
+		}
+	}
+	ui->tabWidget->setTabText(0, "Valid(" + QString::number(validCount) + ")");
+	ui->tabWidget->setTabText(1, "Invoked(" + QString::number(invokedCount) + ")");
 }

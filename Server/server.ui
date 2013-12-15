@@ -72,9 +72,9 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>310</x>
-      <y>20</y>
+      <y>70</y>
       <width>111</width>
-      <height>181</height>
+      <height>131</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -88,7 +88,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>310</x>
-      <y>0</y>
+      <y>50</y>
       <width>71</width>
       <height>16</height>
      </rect>
@@ -96,6 +96,35 @@ p, li { white-space: pre-wrap; }
     <property name="text">
      <string>Connections</string>
     </property>
+   </widget>
+   <widget class="QComboBox" name="typeCompany">
+    <property name="geometry">
+     <rect>
+      <x>310</x>
+      <y>20</y>
+      <width>111</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="currentIndex">
+     <number>0</number>
+    </property>
+    <property name="maxVisibleItems">
+     <number>2</number>
+    </property>
+    <property name="maxCount">
+     <number>2</number>
+    </property>
+    <item>
+     <property name="text">
+      <string>Federal Agency</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Ministry</string>
+     </property>
+    </item>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -115,6 +144,8 @@ p, li { white-space: pre-wrap; }
     <addaction name="actionStop"/>
     <addaction name="separator"/>
     <addaction name="actionSettings"/>
+    <addaction name="separator"/>
+    <addaction name="actionAdd_friend_server"/>
    </widget>
    <widget class="QMenu" name="menuDatabase">
     <property name="title">
@@ -178,6 +209,11 @@ p, li { white-space: pre-wrap; }
   <action name="actionRemoveItem">
    <property name="text">
     <string>Remove item...</string>
+   </property>
+  </action>
+  <action name="actionAdd_friend_server">
+   <property name="text">
+    <string>Add friend server...</string>
    </property>
   </action>
  </widget>

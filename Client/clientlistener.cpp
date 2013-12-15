@@ -7,6 +7,7 @@
 #include <QTextCodec>
 #include <QDebug>
 #include "client.h"
+#include "certificate.h"
 
 ClientListener::ClientListener(const Long &privateKey, const Long &publicKey, Client *parent)
 {
@@ -46,6 +47,14 @@ void ClientListener::login(const Long &hashPIN)
 	mState.waiting = true;
 	mState.waitingType = TYPE_LOGIN_STATUS;
 	sendData(TYPE_LOGIN, hashPIN.toByteArray());
+}
+
+void ClientListener::getCertificates()
+{
+	mState.waiting = true;
+	mState.waitingType = TYPE_CERTIFICATES;
+	sendRequest(REQUEST_CERTIFICATES);
+	mParent->printLog("Sended request for certificates");
 }
 
 void ClientListener::onConnected()
@@ -224,11 +233,19 @@ void ClientListener::parseInputData()
 		case TYPE_LOGIN_STATUS:
 			status = parseLoginStatus(mData.data);
 			break;
+		case TYPE_CERTIFICATES:
+			status = parseCertificates(mData.data);
+			break;
 		default:
 			break;
 		}
 		if (status)
 			mState.clear();
+		else
+		{
+			mData.clear();
+			return;
+		}
 	}
 	switch(mData.type)
 	{
@@ -258,7 +275,6 @@ bool ClientListener::parseTextMessage(const QString &text)
 
 /**
  * @brief ClientListener::parsePublicKeys
- * @param keys
  *
  * Keys block:
  * [ public_key_size | public_session_key_size | public_key | public_session_key ]
@@ -313,17 +329,18 @@ bool ClientListener::parsePublicKeys(const QByteArray &byteArray)
 						  + mKeys.serverPublicSessionKey.toString());
 	}
 	mKeys.haveServerKeys = true;
-
-	if (mState.waiting && mState.waitingType == TYPE_PUBLIC_KEYS)
-	{
-		mState.waiting = false;
-		mState.waitingType = 0;
-	}
 	makeKey(mKeys);
-
 	return true;
 }
 
+/**
+ * @brief ClientListener::parseLoginStatus
+ *
+ * [ answer  ]
+ * [ 2 bytes ]
+ *
+ * Answer may be {ANSWER_LOGIN_OK, ANSWER_LOGIN_FAIL}
+ */
 bool ClientListener::parseLoginStatus(const QByteArray &byteArray)
 {
 	if (byteArray.size() != 2)
@@ -343,6 +360,46 @@ bool ClientListener::parseLoginStatus(const QByteArray &byteArray)
 		emit message("Unknown error");
 		break;
 	}
+	return true;
+}
+
+/**
+ * @brief ClientListener::parseCertificates
+ *
+ * [    N    |  size1  | certificate1 |  size2  | certificate2 | ... |  sizeN  | certificateN ]
+ * [ 2 bytes | 2 bytes |     ...      | 2 bytes |     ...      | ... | 2 bytes |     ...      ]
+ */
+bool ClientListener::parseCertificates(const QByteArray &byteArray)
+{
+	QList<Certificate> certificates;
+
+	int index = 0;
+	if (index + 2 > byteArray.size())
+		return false; // TODO: error
+
+	int count = (((quint8) byteArray[index]) << 8) | ((quint8) byteArray[index + 1]);
+	index += 2;
+
+	for (int i = 0; i < count; ++i)
+	{
+		QByteArray arr1;
+
+		if (index + 2 > byteArray.size())
+			return false; // TODO: error
+
+		int size1 = (((quint8) byteArray[index]) << 8) | ((quint8) byteArray[index + 1]);
+		index += 2;
+
+		if (index + size1 > byteArray.size())
+			return false; // TODO: error
+
+		arr1 = byteArray.mid(index, size1);
+		index += size1;
+		Certificate cert = Certificate::fromByteArray(arr1);
+		certificates.append(cert);
+	}
+	emit recievedCertificates(certificates);
+	mParent->printLog("Recieved certificates");
 	return true;
 }
 

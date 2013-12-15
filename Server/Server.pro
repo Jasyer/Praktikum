@@ -11,7 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = Server
 TEMPLATE = app
 
-INCLUDEPATH += ../include
+INCLUDEPATH += ../include ../Common
 LIBS += ../lib/libCryptograph.a ../lib/libLongLibrary.a
 
 SOURCES += main.cpp\
@@ -20,9 +20,9 @@ SOURCES += main.cpp\
     serversettings.cpp \
     serverlistener.cpp \
     database.cpp \
-    certificate.cpp \
     clientsbase.cpp \
-    dialogdatabaseitemedit.cpp
+    dialogdatabaseitemedit.cpp \
+    ../Common/certificate.cpp
 
 HEADERS  += server.h \
     dialogserversettings.h \
@@ -34,7 +34,8 @@ HEADERS  += server.h \
     clientsbase.h \
     dialogdatabaseitemedit.h \
     ../include/cryptoconstants.h \
-    ../include/commands.h
+    ../include/commands.h \
+    ../Common/certificate.h
 
 FORMS    += server.ui \
     dialogserversettings.ui \

@@ -8,8 +8,9 @@
 #include "server.h"
 
 ServerListener::ServerListener(QTcpSocket *socket, const Long &privateKey, const Long &publicKey,
-							   Server *parent)
+							   Server *parent, bool connectToServer)
 {
+	mConnectToServer = connectToServer;
 	mParent = parent;
 	mSocket = socket;
 	mSocketID = socket->socketDescriptor();
@@ -25,12 +26,60 @@ ServerListener::ServerListener(QTcpSocket *socket, const Long &privateKey, const
 	mState.clear();
 	makeSessionKeys();
 
-	sendCommand(STATE_READY);
+	if (!mConnectToServer)
+		sendCommand(STATE_READY);
+	else
+	{
+		mState.waiting = true;
+		mState.waitingType = STATE_READY;
+	}
+}
+
+void ServerListener::connectToServer(const QString &IP, const QString &port)
+{
+	connect(mSocket, SIGNAL(connected()), SLOT(onConnected()));
+	connect(mSocket,
+			SIGNAL(error(QAbstractSocket::SocketError)),
+			SLOT(onError(QAbstractSocket::SocketError)));
+
+	mConnectToServerAddress = IP + ":" + port;
+	mParent->printLog("Connecting to " + mConnectToServerAddress + "...");
+	mSocket->connectToHost(QHostAddress(IP), port.toInt());
+}
+
+ServerListener::~ServerListener()
+{
+	if (mConnectToServer)
+		mSocket->deleteLater();
+}
+
+void ServerListener::onConnected()
+{
+	mParent->printLog("OK. Connected to " + mConnectToServerAddress);
+}
+
+void ServerListener::onError(const QAbstractSocket::SocketError &e)
+{
+	switch (e)
+	{
+	case QAbstractSocket::HostNotFoundError:
+		mParent->printLog("Error: " + mConnectToServerAddress + " not found");
+		break;
+	default:
+		mParent->printLog("Error: unknown error");
+		break;
+	}
+	emit deleteMe();
 }
 
 void ServerListener::onDisconnected()
 {
-	// emit diconnected(socket_id);
+	if (mConnectToServer)
+		emit deleteMe();
+	else
+	{
+		// emit diconnected(socket_id);
+	}
 }
 
 /**
@@ -56,7 +105,10 @@ void ServerListener::onReadyRead()
 
 	mData.data = mSocket->read(mData.size);
 
-	parseInputData();
+	if (mConnectToServer)
+		parseInputDataFromAnotherServer();
+	else
+		parseInputData();
 
 	if (mSocket->bytesAvailable() > 0)
 		emit checkForBytesAvailable();
@@ -149,6 +201,42 @@ void ServerListener::sendPublicKeys()
 	sendData(TYPE_PUBLIC_KEYS, keys_block);
 }
 
+/**
+ * @brief ServerListener::sendCertificates
+ *
+ * [ count=N |  size1  | certificate1 |  size2  | certificate2 | ... |  sizeN  | certificateN ]
+ * [ 2 bytes | 2 bytes |     ...      | 2 bytes |     ...      | ... | 2 bytes |     ...      ]
+ */
+
+void ServerListener::sendCertificates()
+{
+	QByteArray array;
+	QList<Certificate> certs = mParent->getCertificates();
+
+	int count = certs.count();
+	{ // count=N
+		quint16 N = count;
+		char buf[2];
+		buf[0] = (N >> 8) & 0xff;
+		buf[1] = N & 0xff;
+		array.append(buf, 2);
+	}
+
+	for (int i = 0; i < count; ++i)
+	{
+		QByteArray array1 = certs[i].toByteArray();
+		// sizeI
+		quint16 size1 = array1.size();
+		char buf[2];
+		buf[0] = (size1 >> 8) & 0xff;
+		buf[1] = size1 & 0xff;
+		array.append(buf, 2);
+		// certificateI
+		array.append(array1);
+	}
+	sendData(TYPE_CERTIFICATES, array);
+}
+
 quint32 ServerListener::readUInt32()
 {
 	quint8 buf[4];
@@ -187,17 +275,47 @@ void ServerListener::writeUInt16(quint16 n)
 
 void ServerListener::parseInputData()
 {
+	if (mState.waiting && mData.type != mState.waitingType)
+	{
+		mData.clear();
+		return;
+	}
+	if (mState.waiting)
+	{ // only if waiting
+		bool status = false;
+		switch(mData.type)
+		{
+		case TYPE_PUBLIC_KEYS:
+			status = parsePublicKeys(mData.data);
+			break;
+		default:
+			break;
+		}
+		if (status)
+			mState.clear();
+	}
+	else
+	{ // may be only if not waiting
+		switch(mData.type)
+		{
+		case TYPE_LOGIN:
+			parseLogin(mData.data);
+			break;
+		default:
+			break;
+		}
+	}
+	// requests may be either if waiting or if not waiting
 	switch(mData.type)
 	{
 	case REQUEST_PUBLIC_KEYS:
 		sendPublicKeys();
-		sendCommand(REQUEST_PUBLIC_KEYS);
+		mState.waiting = true;
+		mState.waitingType = TYPE_PUBLIC_KEYS;
+		sendCommand(REQUEST_PUBLIC_KEYS); // request to client for keys to make common key
 		break;
-	case TYPE_PUBLIC_KEYS:
-		parsePublicKeys(mData.data);
-		break;
-	case TYPE_LOGIN:
-		parseLogin(mData.data);
+	case REQUEST_CERTIFICATES:
+		sendCertificates();
 		break;
 	default:
 		break;
@@ -205,7 +323,7 @@ void ServerListener::parseInputData()
 	mData.clear();
 }
 
-void ServerListener::parsePublicKeys(const QByteArray &byteArray)
+bool ServerListener::parsePublicKeys(const QByteArray &byteArray)
 {
 	// public_key_size section
 	quint16 public_key_size;
@@ -223,7 +341,7 @@ void ServerListener::parsePublicKeys(const QByteArray &byteArray)
 	if (public_session_key_size + public_key_size + 4 != byteArray.size())
 	{
 		qDebug() << "Incorrect keys message";
-		return;
+		return false;
 	}
 
 	// public_key section
@@ -233,7 +351,7 @@ void ServerListener::parsePublicKeys(const QByteArray &byteArray)
 		if (!Long::isLong(public_key_array))
 		{
 			qDebug() << "Incorrect public key";
-			return;
+			return false;
 		}
 		mKeys.clientPublicKey = Long::fromByteArray(public_key_array);
 		mParent->printLog("Recieved client's public key: " + mKeys.clientPublicKey.toString());
@@ -247,26 +365,21 @@ void ServerListener::parsePublicKeys(const QByteArray &byteArray)
 		if (!Long::isLong(public_session_key_array))
 		{
 			qDebug() << "Incorrect public session key";
-			return;
+			return false;
 		}
 		mKeys.clientPublicSessionKey = Long::fromByteArray(public_session_key_array);
 		mParent->printLog("Recieved client's session public key: "
 						  + mKeys.clientPublicSessionKey.toString());
 	}
 	mKeys.haveClientKeys = true;
-
-	if (mState.waiting && mState.waitingType == TYPE_PUBLIC_KEYS)
-	{
-		mState.waiting = false;
-		mState.waitingType = 0;
-	}
 	makeKey(mKeys);
+	return true;
 }
 
 void ServerListener::parseLogin(const QByteArray &byteArray)
 {
 	Long hashPIN = Long::fromByteArray(byteArray);
-	if (mParent->loginUser(hashPIN))
+	if (mParent->loginUser(hashPIN, mKeys.clientPublicKey))
 	{
 		sendAnswer(TYPE_LOGIN_STATUS, ANSWER_LOGIN_OK);
 		mParent->printLog("ANSWER: OK");
@@ -276,6 +389,70 @@ void ServerListener::parseLogin(const QByteArray &byteArray)
 		sendAnswer(TYPE_LOGIN_STATUS, ANSWER_LOGIN_FAIL);
 		mParent->printLog("ANSWER: FAIL");
 	}
+}
+
+void ServerListener::parseInputDataFromAnotherServer()
+{
+	if (!mState.waiting || mData.type != mState.waitingType)
+	{
+		mData.clear();
+		return;
+	}
+	switch(mData.type)
+	{
+	case STATE_READY:
+		mState.waiting = true;
+		mState.waitingType = TYPE_PUBLIC_KEYS;
+		sendCommand(REQUEST_PUBLIC_KEYS);
+		break;
+	case TYPE_PUBLIC_KEYS:
+		parsePublicKeys(mData.data);
+		sendPublicKeys();
+		mState.waiting = true;
+		mState.waitingType = TYPE_CERTIFICATES;
+		sendCommand(REQUEST_CERTIFICATES);
+		break;
+	case TYPE_CERTIFICATES:
+		parseCertificates(mData.data);
+		mState.clear();
+		emit deleteMe();
+		break;
+	default:
+		break;
+	}
+	mData.clear();
+}
+
+void ServerListener::parseCertificates(const QByteArray &byteArray)
+{
+	QList<Certificate> certificates;
+
+	int index = 0;
+	if (index + 2 > byteArray.size())
+		return; // TODO: error
+
+	int count = (((quint8) byteArray[index]) << 8) | ((quint8) byteArray[index + 1]);
+	index += 2;
+
+	for (int i = 0; i < count; ++i)
+	{
+		QByteArray arr1;
+
+		if (index + 2 > byteArray.size())
+			return; // TODO: error
+
+		int size1 = (((quint8) byteArray[index]) << 8) | ((quint8) byteArray[index + 1]);
+		index += 2;
+
+		if (index + size1 > byteArray.size())
+			return; // TODO: error
+
+		arr1 = byteArray.mid(index, size1);
+		index += size1;
+		Certificate cert = Certificate::fromByteArray(arr1);
+		certificates.append(cert);
+	}
+	emit addCertificates(certificates);
 }
 
 void ServerListener::makeSessionKeys()

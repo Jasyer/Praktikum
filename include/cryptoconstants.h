@@ -20,4 +20,10 @@ static const Long GROUP_PRIME =
 		//Long(19);
 static const Long GROUP_GENERATOR = Long(7);//Long(2);
 
+static const Long RSA_P = Long(1046527);
+static const Long RSA_Q = Long(199933);
+static const Long RSA_E = Long(3);
+static const Long RSA_PHI = Long(QString("30b7520608"));
+static const Long RSA_N = Long(QString("30b7650b03"));
+
 #endif // CRYPTOCONSTANTS_H

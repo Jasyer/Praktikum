@@ -52,6 +52,8 @@ private:
 	void choiceServer();
 	void updateCertificateList();
 
+	void connectContextMenuSlots();
+
 private slots:
 	// gui slots
 	void onClickedActionStart();
@@ -59,6 +61,14 @@ private slots:
 	void onClickedActionAdd_friend_server();
 	void onClickedActionDatabaseAddItem();
 	void onClickedActionDatabaseRemoveItem();
+
+	// certificate list context menu
+	void contextMenuListCertValid();
+	void contextMenuListCertInvoked();
+
+	void onClickedActionCertView();
+	void onClickedActionCertInvoke();
+	void onClickedActionCertReissue();
 
 	// server slots
 	void onErrorAccepted(QAbstractSocket::SocketError e);

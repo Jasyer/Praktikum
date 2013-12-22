@@ -21,7 +21,8 @@ SOURCES += main.cpp\
     database.cpp \
     clientsbase.cpp \
     dialogdatabaseitemedit.cpp \
-    ../Common/certificate.cpp
+    ../Common/certificate.cpp \
+    ../Common/certificateviewdialog.cpp
 
 HEADERS  += server.h \
     dialogserversettings.h \
@@ -33,8 +34,10 @@ HEADERS  += server.h \
     ../include/cryptoconstants.h \
     ../include/commands.h \
     ../Common/certificate.h \
-    ../include/stringconstants.h
+    ../include/stringconstants.h \
+    ../Common/certificateviewdialog.h
 
 FORMS    += server.ui \
     dialogserversettings.ui \
-    dialogdatabaseitemedit.ui
+    dialogdatabaseitemedit.ui \
+    ../Common/certificateviewdialog.ui

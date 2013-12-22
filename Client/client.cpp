@@ -6,6 +6,8 @@
 #include "longlibrary.h"
 #include "stringconstants.h"
 #include "commands.h"
+#include "certificateviewdialog.h"
+#include "certificate.h"
 #include <QTextCodec>
 #include <QTimer>
 #include <QListWidget>
@@ -26,6 +28,8 @@ Client::Client(QWidget *parent) :
 	connect(ui->typeCompany, SIGNAL(activated(int)), SLOT(onTypeCompanyActivated(int)));
 
 	onTypeCompanyActivated(0);
+
+	connectContextMenuSlots();
 }
 
 Client::~Client()
@@ -63,6 +67,18 @@ void Client::loadCompanyList()
 	ui->typeCompany->addItem(textServerNameFederalAgency);
 	ui->typeCompany->addItem(textServerNameMinistry);
 	ui->typeCompany->setCurrentIndex(0);
+}
+
+void Client::connectContextMenuSlots()
+{
+	ui->listCertValid->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(ui->listCertValid,
+			SIGNAL(customContextMenuRequested(QPoint)),
+			SLOT(contextMenuListCertValid()));
+	ui->listCertInvoked->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(ui->listCertInvoked,
+			SIGNAL(customContextMenuRequested(QPoint)),
+			SLOT(contextMenuListCertInvoked()));
 }
 
 void Client::onButtonConnectClicked()
@@ -131,6 +147,44 @@ void Client::onTypeCompanyActivated(int index)
 	}
 }
 
+void Client::contextMenuListCertValid()
+{
+	if (ui->listCertValid->selectedItems().empty())
+		return;
+	QMenu menu;
+	menu.addAction("View", this, SLOT(onClickedActionCertView()));
+	menu.exec(QCursor::pos());
+}
+
+void Client::contextMenuListCertInvoked()
+{
+	if (ui->listCertInvoked->selectedItems().empty())
+		return;
+	QMenu menu;
+	menu.addAction("View", this, SLOT(onClickedActionCertView()));
+	menu.exec(QCursor::pos());
+}
+
+void Client::onClickedActionCertView()
+{
+	Certificate current;
+	switch(ui->certificates->currentIndex())
+	{
+	case 0:
+		// Valid tab
+		current = mCertificatesValid[ui->listCertValid->currentRow()];
+		break;
+	case 1:
+		// Invoked tab
+		current = mCertificatesInvoked[ui->listCertInvoked->currentRow()];
+		break;
+	default:
+		return;
+	}
+	CertificateViewDialog dialog(current);
+	dialog.exec();
+}
+
 void Client::onConnected()
 {
 	printLog("OK. Connected");
@@ -149,24 +203,25 @@ void Client::onRecievedCertificates(const QList<Certificate> &list)
 {
 	ui->listCertValid->clear();
 	ui->listCertInvoked->clear();
-	mCertificates = list;
-	int validCount = 0;
-	int invokedCount = 0;
-	for (int i = 0; i < mCertificates.count(); ++i)
+	mCertificatesValid.clear();
+	mCertificatesInvoked.clear();
+	for (int i = 0; i < list.count(); ++i)
 	{
-		Certificate cert = mCertificates[i];
+		Certificate cert = list[i];
 		QString line = cert.name();
-		if (mCertificates[i].invoked())
+		if (cert.invoked())
 		{
 			ui->listCertInvoked->insertItem(ui->listCertInvoked->count(), line);
-			++invokedCount;
+			mCertificatesInvoked.append(cert);
 		}
 		else
 		{
 			ui->listCertValid->insertItem(ui->listCertValid->count(), line);
-			++validCount;
+			mCertificatesValid.append(cert);
 		}
 	}
-	ui->tabWidget->setTabText(0, "Valid(" + QString::number(validCount) + ")");
-	ui->tabWidget->setTabText(1, "Invoked(" + QString::number(invokedCount) + ")");
+	ui->certificates->setTabText(0, "Valid(" +
+								 QString::number(mCertificatesValid.count()) + ")");
+	ui->certificates->setTabText(1, "Invoked(" +
+								 QString::number(mCertificatesInvoked.count()) + ")");
 }

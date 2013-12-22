@@ -8,9 +8,11 @@
 #include "dialogdatabaseitemedit.h"
 #include <QTimer>
 #include <QList>
+#include <QInputDialog>
 #include "cryptoconstants.h"
 #include "cryptograph.h"
 #include "commands.h"
+#include "certificateviewdialog.h"
 
 Server::Server(QWidget *parent) :
     QMainWindow(parent),
@@ -41,6 +43,8 @@ Server::Server(QWidget *parent) :
 	choiceServer();
 	this->setWindowTitle(mServerName + " Server");
 	QTimer::singleShot(0, this, SLOT(loopUpdateCertificateList()));
+
+	connectContextMenuSlots();
 }
 
 Server::~Server()
@@ -94,7 +98,7 @@ bool Server::loginUser(const Long &hashPIN)
 
 			mCertificates.insert(info, cert);
 			mListCertValid.append(info);
-//			updateCertificateList();
+			updateCertificateList();
 		}
 		return true;
 	}
@@ -151,31 +155,56 @@ void Server::choiceServer()
 void Server::updateCertificateList()
 {
 	// update list of valid/invoked certificates
-	QList<ClientInfo>::Iterator it = mListCertValid.begin();
-	while(it != mListCertValid.end())
 	{
-		Certificate &cert = mCertificates[*it];
-		cert.update();
-		if (cert.invoked())
+		mListCertValid.clear();
+		mListCertInvoked.clear();
+		QMap<ClientInfo, Certificate>::Iterator it = mCertificates.begin();
+		for(; it != mCertificates.end(); ++it)
 		{
-			mListCertInvoked.append(*it);
-			it = mListCertValid.erase(it);
+			Certificate &cert = it.value();
+			cert.update();
+			if (cert.invoked())
+				mListCertInvoked.append(it.key());
+			else
+				mListCertValid.append(it.key());
 		}
-		else
-			it++;
 	}
 	// update gui
-	ui->listCertValid->clear();
-	ui->certificates->setTabText(0, "Valid(" + QString::number(mListCertValid.size()) + ")");
-	it = mListCertValid.begin();
-	for (; it != mListCertValid.end(); ++it)
-		ui->listCertValid->addItem(mCertificates[*it].name());
+	{
+		bool selected = !(ui->listCertValid->selectedItems().empty());
+		int currentRow = ui->listCertValid->currentRow();
+		ui->listCertValid->clear();
+		ui->certificates->setTabText(0, "Valid(" +
+									 QString::number(mListCertValid.size()) + ")");
+		QList<ClientInfo>::Iterator it = mListCertValid.begin();
+		for (; it != mListCertValid.end(); ++it)
+			ui->listCertValid->addItem(mCertificates[*it].name());
+		if (selected)
+			ui->listCertValid->setCurrentRow(currentRow);
 
-	ui->listCertInvoked->clear();
-	ui->certificates->setTabText(1, "Invoked(" + QString::number(mListCertInvoked.size()) + ")");
-	it = mListCertInvoked.begin();
-	for (; it != mListCertInvoked.end(); ++it)
-		ui->listCertInvoked->addItem(mCertificates[*it].name());
+		selected = !ui->listCertInvoked->selectedItems().empty();
+		currentRow = ui->listCertInvoked->currentRow();
+		ui->listCertInvoked->clear();
+		ui->certificates->setTabText(1, "Invoked(" +
+									 QString::number(mListCertInvoked.size()) + ")");
+		it = mListCertInvoked.begin();
+		for (; it != mListCertInvoked.end(); ++it)
+			ui->listCertInvoked->addItem(mCertificates[*it].name());
+		if (selected)
+			ui->listCertInvoked->setCurrentRow(currentRow);
+	}
+}
+
+void Server::connectContextMenuSlots()
+{
+	ui->listCertValid->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(ui->listCertValid,
+			SIGNAL(customContextMenuRequested(QPoint)),
+			SLOT(contextMenuListCertValid()));
+	ui->listCertInvoked->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(ui->listCertInvoked,
+			SIGNAL(customContextMenuRequested(QPoint)),
+			SLOT(contextMenuListCertInvoked()));
 }
 
 /**
@@ -241,6 +270,89 @@ void Server::onClickedActionDatabaseAddItem()
 void Server::onClickedActionDatabaseRemoveItem()
 {
 
+}
+
+void Server::contextMenuListCertValid()
+{
+	if (ui->listCertValid->selectedItems().empty())
+		return;
+	QMenu menu;
+	menu.addAction("View", this, SLOT(onClickedActionCertView()));
+	menu.addAction("Invoke", this, SLOT(onClickedActionCertInvoke()));
+	menu.addAction("Reissue", this, SLOT(onClickedActionCertReissue()));
+	menu.exec(QCursor::pos());
+}
+
+void Server::contextMenuListCertInvoked()
+{
+	if (ui->listCertInvoked->selectedItems().empty())
+		return;
+	QMenu menu;
+	menu.addAction("View", this, SLOT(onClickedActionCertView()));
+	menu.addAction("Reissue", this, SLOT(onClickedActionCertReissue()));
+	menu.exec(QCursor::pos());
+}
+
+void Server::onClickedActionCertView()
+{
+	ClientInfo current;
+	switch(ui->certificates->currentIndex())
+	{
+	case 0:
+		// Valid tab
+		current = mListCertValid[ui->listCertValid->currentRow()];
+		break;
+	case 1:
+		// Invoked tab
+		current = mListCertInvoked[ui->listCertInvoked->currentRow()];
+		break;
+	default:
+		return;
+	}
+	CertificateViewDialog dialog(mCertificates[current]);
+	dialog.exec();
+}
+
+void Server::onClickedActionCertInvoke()
+{
+	ClientInfo current;
+	switch(ui->certificates->currentIndex())
+	{
+	case 0:
+		// Valid tab
+		current = mListCertValid[ui->listCertValid->currentRow()];
+		break;
+	default:
+		return;
+	}
+	mCertificates[current].invoke();
+	updateCertificateList();
+}
+
+void Server::onClickedActionCertReissue()
+{
+	ClientInfo current;
+
+	switch(ui->certificates->currentIndex())
+	{
+	case 0:
+		// Valid tab
+		current = mListCertValid[ui->listCertValid->currentRow()];
+		break;
+	case 1:
+		// Invoked tab
+		current = mListCertInvoked[ui->listCertInvoked->currentRow()];
+		break;
+	default:
+		return;
+	}
+	bool ok;
+	int secs = QInputDialog::getInt(this, "Lifetime", "In seconds:", 10, 0, 1000, 1, &ok);
+	if (ok)
+	{
+		mCertificates[current].reissue(QDateTime::currentDateTime().addSecs(secs));
+		updateCertificateList();
+	}
 }
 
 void Server::onErrorAccepted(QAbstractSocket::SocketError e)

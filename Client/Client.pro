@@ -17,12 +17,15 @@ LIBS += ../lib/libCryptograph.a ../lib/libLongLibrary.a
 SOURCES += main.cpp\
         client.cpp \
     clientlistener.cpp \
-    ../Common/certificate.cpp
+    ../Common/certificate.cpp \
+    ../Common/certificateviewdialog.cpp
 
 HEADERS  += client.h \
     clientlistener.h \
     ../include/cryptoconstants.h \
     ../Common/certificate.h \
-    ../include/commands.h
+    ../include/commands.h \
+    ../Common/certificateviewdialog.h
 
-FORMS    += client.ui
+FORMS    += client.ui \
+    ../Common/certificateviewdialog.ui

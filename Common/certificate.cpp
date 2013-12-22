@@ -290,9 +290,39 @@ Long Certificate::clientID() const
 	return mCliendID;
 }
 
+Long Certificate::publicKey() const
+{
+	return mPublicKey;
+}
+
+Long Certificate::getRSAsign() const
+{
+	return mSignRSA;
+}
+
 QString Certificate::name() const
 {
 	return mName;
+}
+
+QString Certificate::serverName() const
+{
+	return mServerName;
+}
+
+QString Certificate::lifeTime() const
+{
+	return mLifeTime.toString("dd.MM.yyyy hh:mm:ss");
+}
+
+QList<QString> Certificate::availableHashList() const
+{
+	return mAvailableHashList;
+}
+
+QList<QString> Certificate::availableCipherList() const
+{
+	return mAvailableCipherList;
 }
 
 void Certificate::update()
@@ -306,18 +336,21 @@ void Certificate::update()
 		mInvoked = false;
 }
 
-void Certificate::operator=(const Certificate &cert)
+void Certificate::invoke()
 {
-	mCliendID = cert.mCliendID;
-	mName = cert.mName;
-	mPublicKey = cert.mPublicKey;
-	mLifeTime = cert.mLifeTime;
-	mValid = cert.mValid;
-	mSigned = cert.mSigned;
-	mInvoked = cert.mInvoked;
-	mAvailableHashList = cert.mAvailableHashList;
-	mAvailableCipherList = cert.mAvailableCipherList;
-	mSignRSA = cert.mSignRSA;
+	mInvoked = true;
+	mLifeTime = QDateTime::currentDateTime();
+}
+
+bool Certificate::reissue(const QDateTime &lifeTime)
+{
+	if (lifeTime <= QDateTime::currentDateTime())
+		return false;
+	mLifeTime = lifeTime;
+	mInvoked = false;
+	signRSA(mPublicKey);
+	signElGamal(mPublicKey);
+	return true;
 }
 
 Certificate Certificate::fromByteArray(const QByteArray &byteArray)
@@ -339,7 +372,7 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 		index += size;
 	}
 
-	// mName
+	// mServerName
 	{
 		QByteArray array;
 		if (index + 2 > byteArray.size())

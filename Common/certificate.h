@@ -25,10 +25,20 @@ public:
 	bool invoked() const;
 	bool valid() const;
 	Long clientID() const;
+	Long publicKey() const;
+	Long getRSAsign() const;
 	QString name() const;
-	void update();
+	QString serverName() const;
+	QString lifeTime() const;
+	QList<QString> availableHashList() const;
+	QList<QString> availableCipherList() const;
 
-	void operator=(const Certificate &cert);
+
+	void update();
+	void invoke();
+	bool reissue(const QDateTime &lifeTime);
+
+//	void operator=(const Certificate &cert);
 
 	static Certificate fromByteArray(const QByteArray &byteArray);
 

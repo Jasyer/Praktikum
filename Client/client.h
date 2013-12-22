@@ -32,6 +32,13 @@ private slots:
 	void onTypeCompanyActivated(int index);
 
 	/*
+	 * context menu slots
+	 */
+	void contextMenuListCertValid();
+	void contextMenuListCertInvoked();
+	void onClickedActionCertView();
+
+	/*
 	 * ClientListener slots
 	 */
 	void onConnected();
@@ -43,12 +50,14 @@ private:
 	ClientListener *mClientListener;
 	void connectSignalsFromServerListener();
 	void loadCompanyList();
+	void connectContextMenuSlots();
 
 	QHostAddress mServerIP;
 	quint16 mServerPort;
 	Long mServerPublicKey;
 
-	QList<Certificate> mCertificates;
+	QList<Certificate> mCertificatesValid;
+	QList<Certificate> mCertificatesInvoked;
 };
 
 #endif // CLIENT_H

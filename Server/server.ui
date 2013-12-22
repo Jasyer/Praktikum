@@ -42,18 +42,29 @@ p, li { white-space: pre-wrap; }
      <rect>
       <x>10</x>
       <y>20</y>
-      <width>291</width>
+      <width>251</width>
       <height>181</height>
      </rect>
     </property>
     <property name="alternatingRowColors">
      <bool>false</bool>
     </property>
-    <property name="columnCount">
-     <number>2</number>
-    </property>
-    <column/>
-    <column/>
+    <attribute name="horizontalHeaderVisible">
+     <bool>true</bool>
+    </attribute>
+    <attribute name="horizontalHeaderStretchLastSection">
+     <bool>true</bool>
+    </attribute>
+    <column>
+     <property name="text">
+      <string>Name</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Hash of PIN</string>
+     </property>
+    </column>
    </widget>
    <widget class="QLabel" name="label">
     <property name="geometry">
@@ -68,63 +79,61 @@ p, li { white-space: pre-wrap; }
      <string>Database</string>
     </property>
    </widget>
-   <widget class="QListWidget" name="listWidget">
-    <property name="geometry">
-     <rect>
-      <x>310</x>
-      <y>70</y>
-      <width>111</width>
-      <height>131</height>
-     </rect>
-    </property>
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-   </widget>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>310</x>
-      <y>50</y>
+      <x>270</x>
+      <y>0</y>
       <width>71</width>
       <height>16</height>
      </rect>
     </property>
     <property name="text">
-     <string>Connections</string>
+     <string>Certificates</string>
     </property>
    </widget>
-   <widget class="QComboBox" name="typeCompany">
+   <widget class="QTabWidget" name="certificates">
     <property name="geometry">
      <rect>
-      <x>310</x>
+      <x>270</x>
       <y>20</y>
-      <width>111</width>
-      <height>22</height>
+      <width>151</width>
+      <height>182</height>
      </rect>
     </property>
     <property name="currentIndex">
      <number>0</number>
     </property>
-    <property name="maxVisibleItems">
-     <number>2</number>
-    </property>
-    <property name="maxCount">
-     <number>2</number>
-    </property>
-    <item>
-     <property name="text">
-      <string>Federal Agency</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>Ministry</string>
-     </property>
-    </item>
+    <widget class="QWidget" name="widget">
+     <attribute name="title">
+      <string>Valid</string>
+     </attribute>
+     <widget class="QListWidget" name="listCertValid">
+      <property name="geometry">
+       <rect>
+        <x>-1</x>
+        <y>-1</y>
+        <width>147</width>
+        <height>158</height>
+       </rect>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="widget_2">
+     <attribute name="title">
+      <string>Invoked</string>
+     </attribute>
+     <widget class="QListWidget" name="listCertInvoked">
+      <property name="geometry">
+       <rect>
+        <x>-1</x>
+        <y>-1</y>
+        <width>147</width>
+        <height>158</height>
+       </rect>
+      </property>
+     </widget>
+    </widget>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -142,8 +151,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <addaction name="actionStart"/>
     <addaction name="actionStop"/>
-    <addaction name="separator"/>
-    <addaction name="actionSettings"/>
     <addaction name="separator"/>
     <addaction name="actionAdd_friend_server"/>
    </widget>

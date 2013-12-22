@@ -17,7 +17,6 @@ LIBS += ../lib/libCryptograph.a ../lib/libLongLibrary.a
 SOURCES += main.cpp\
         server.cpp \
     dialogserversettings.cpp \
-    serversettings.cpp \
     serverlistener.cpp \
     database.cpp \
     clientsbase.cpp \
@@ -26,8 +25,6 @@ SOURCES += main.cpp\
 
 HEADERS  += server.h \
     dialogserversettings.h \
-    stringconstants.h \
-    serversettings.h \
     serverlistener.h \
     database.h \
     certificate.h \
@@ -35,7 +32,8 @@ HEADERS  += server.h \
     dialogdatabaseitemedit.h \
     ../include/cryptoconstants.h \
     ../include/commands.h \
-    ../Common/certificate.h
+    ../Common/certificate.h \
+    ../include/stringconstants.h
 
 FORMS    += server.ui \
     dialogserversettings.ui \

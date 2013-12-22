@@ -7,65 +7,41 @@
     <x>0</x>
     <y>0</y>
     <width>220</width>
-    <height>140</height>
+    <height>111</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="QWidget" name="">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>2</width>
-     <height>2</height>
-    </rect>
-   </property>
-   <layout class="QGridLayout" name="gridLayout"/>
-  </widget>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
      <x>11</x>
      <y>11</y>
      <width>201</width>
-     <height>121</height>
+     <height>91</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_3">
     <item row="0" column="0">
      <widget class="QGroupBox" name="groupBox">
       <property name="title">
-       <string>Server address</string>
+       <string>Company</string>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="0">
-        <layout class="QFormLayout" name="formLayout">
-         <property name="labelAlignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <item row="0" column="0">
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>IP</string>
-           </property>
-          </widget>
+        <widget class="QComboBox" name="typeCompany">
+         <item>
+          <property name="text">
+           <string>Federal Agency</string>
+          </property>
          </item>
-         <item row="0" column="1">
-          <widget class="QLineEdit" name="textIP"/>
+         <item>
+          <property name="text">
+           <string>Ministry</string>
+          </property>
          </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>Port</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QLineEdit" name="textPort"/>
-         </item>
-        </layout>
+        </widget>
        </item>
       </layout>
      </widget>

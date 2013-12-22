@@ -20,16 +20,11 @@ struct InputData
 struct ConnectionKeys
 {
 	char aesKey[32];
-	Long currentKey;
 	Long privateKey;
 	Long publicKey;
-	Long privateSessionKey;
-	Long publicSessionKey;
-
-	bool haveClientKeys;
-	Long clientPublicKey;
-	Long clientPublicSessionKey;
-	ConnectionKeys() : haveClientKeys(false) {}
+	Long sessionKey;
+	bool haveKey;
+	ConnectionKeys() : haveKey(false) {}
 };
 
 struct SocketState
@@ -53,7 +48,7 @@ class ServerListener : public QObject
 public:
 	ServerListener(QTcpSocket *socket, const Long &privateKey, const Long &publicKey,
 				   Server *parent, bool connectToServer = false);
-	void connectToServer(const QString &IP, const QString &port);
+	void connectToServer(const QHostAddress &IP, quint16 port);
 	~ServerListener();
 
 signals:
@@ -85,7 +80,6 @@ private:
 	void sendData(quint16 type, const QByteArray &data);
 	void sendText(const QString &text);
 
-	void sendPublicKeys();
 	void sendCertificates();
 
 	quint32 readUInt32();
@@ -94,14 +88,17 @@ private:
 	void writeUInt16(quint16 n);
 
 	void parseInputData();
-	bool parsePublicKeys(const QByteArray &byteArray);
+	bool parseSessionKey(const QByteArray &byteArray);
 	void parseLogin(const QByteArray &byteArray);
 
+	// if connectiong to server
 	void parseInputDataFromAnotherServer();
-	void parseCertificates(const QByteArray &byteArray); // if mConnectToServer
+	void makeSessionKey();
+	void sendSessionKey();
+	void parseCertificates(const QByteArray &byteArray);
 
-	void makeSessionKeys();
-	void makeKey(const ConnectionKeys &keys);
+	void encryptData(const QByteArray& input, QByteArray &output);
+	void decryptData(const QByteArray& input, QByteArray &output);
 
 };
 

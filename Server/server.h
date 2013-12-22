@@ -4,15 +4,12 @@
 #include <QMainWindow>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include "serversettings.h"
 #include "serverlistener.h"
 #include "clientsbase.h"
 #include "longlibrary.h"
 #include "certificate.h"
 #include <QHash>
 #include <QList>
-
-#define M_SETTING(q) ServerSettings::currentSettings()->get(q)
 
 namespace Ui {
 class Server;
@@ -26,14 +23,17 @@ public:
 	explicit Server(QWidget *parent = 0);
 	~Server();
 	void printLog(const QString &text);
-	bool loginUser(const Long &hashPIN, const Long &publicKey);
+	bool loginUser(const Long &hashPIN);
 	QList<Certificate> getCertificates();
 
 private:
 	Ui::Server *ui;
 
+	quint8 mServerType;
 	Long mServerID;
 	QString mServerName;
+	QHostAddress mServerIP;
+	quint16 mServerPort;
 	QTcpServer mServer;
 	Long mPrivateKey;
 	Long mPublicKey;
@@ -43,12 +43,17 @@ private:
 	QMap<ClientInfo, Certificate> mCertificates;
 	ClientsBase mClientsBase;
 
+	QList<ClientInfo> mListCertValid;
+	QList<ClientInfo> mListCertInvoked;
+
 	QList<QString> mAvailableHashList;
 	QList<QString> mAvailableCipherList;
 
+	void choiceServer();
+	void updateCertificateList();
+
 private slots:
 	// gui slots
-	void onClickedActionSettings();
 	void onClickedActionStart();
 	void onClickedActionStop();
 	void onClickedActionAdd_friend_server();
@@ -64,7 +69,9 @@ private slots:
 	void onDeleteMe();
 	void onAddCertificates(const QList<Certificate> &certificates);
 
-	void makePrivatePublicKeys();
+	// other
+	void makePrivateKey();
+	void loopUpdateCertificateList();
 };
 
 #endif // SERVER_H

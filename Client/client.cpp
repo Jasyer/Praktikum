@@ -4,6 +4,8 @@
 #include "cryptograph.h"
 #include "cryptoconstants.h"
 #include "longlibrary.h"
+#include "stringconstants.h"
+#include "commands.h"
 #include <QTextCodec>
 #include <QTimer>
 #include <QListWidget>
@@ -15,12 +17,15 @@ Client::Client(QWidget *parent) :
 	ui->setupUi(this);
 	mClientListener = NULL;
 
+	loadCompanyList();
+
 	connect(ui->buttonConnect, SIGNAL(clicked()), SLOT(onButtonConnectClicked()));
 	connect(ui->buttonLogIn, SIGNAL(clicked()), SLOT(onButtonLogInClicked()));
 	connect(ui->buttonDisconnect, SIGNAL(clicked()), SLOT(onButtonDisconnectClicked()));
 	connect(ui->buttonGetCertificates, SIGNAL(clicked()), SLOT(onButtonGetCertificatesClicked()));
+	connect(ui->typeCompany, SIGNAL(activated(int)), SLOT(onTypeCompanyActivated(int)));
 
-	QTimer::singleShot(0, this, SLOT(makePrivatePublicKey()));
+	onTypeCompanyActivated(0);
 }
 
 Client::~Client()
@@ -35,6 +40,7 @@ void Client::printLog(const QString &text)
 	if (!ui->textClientLog->textCursor().atStart())
 		ui->textClientLog->insertPlainText("\n");
 	ui->textClientLog->insertPlainText(time.toString("[hh:mm:ss.zzz] ") + text);
+//	ui->textClientLog->insertHtml("<pre>" + time.toString("[hh:mm:ss.zzz] ") + text + "</pre>");
 	ui->textClientLog->moveCursor(QTextCursor::End);
 }
 
@@ -47,42 +53,26 @@ void Client::connectSignalsFromServerListener()
 			SIGNAL(error(QString)),
 			SLOT(onError(QString)));
 	connect(mClientListener,
-			SIGNAL(message(QString)),
-			SLOT(onMessage(QString)));
-	connect(mClientListener,
 			SIGNAL(recievedCertificates(QList<Certificate>)),
 			SLOT(onRecievedCertificates(QList<Certificate>)));
 }
 
-void Client::makePrivatePublicKey()
+void Client::loadCompanyList()
 {
-	printLog("Generating private key...");
-	// private key
-	int random_bits_size = GROUP_PRIME.getSize();
-	char *random_bits = new char[random_bits_size];
-	drbg_generate(random_bits, random_bits_size);
-	mPrivateKey = Long(random_bits, random_bits_size);
-	mPrivateKey.setModule(GROUP_PRIME);
-	delete []random_bits;
-
-	printLog("Calculating public key...");
-	// public key
-	mPublicKey = GROUP_GENERATOR;
-	mPublicKey.setModule(GROUP_PRIME);
-	mPublicKey.pow(mPrivateKey);
-
-	printLog("OK. Private & public keys generated");
+	ui->typeCompany->clear();
+	ui->typeCompany->addItem(textServerNameFederalAgency);
+	ui->typeCompany->addItem(textServerNameMinistry);
+	ui->typeCompany->setCurrentIndex(0);
 }
 
 void Client::onButtonConnectClicked()
 {
 	ui->buttonConnect->setEnabled(false);
-	ui->textIP->setEnabled(false);
-	ui->textPort->setEnabled(false);
+	ui->typeCompany->setEnabled(false);
 
-	mClientListener = new ClientListener(mPrivateKey, mPublicKey, this);
+	mClientListener = new ClientListener(mServerPublicKey, this);
 	connectSignalsFromServerListener();
-	mClientListener->connectToHost(ui->textIP->text(), ui->textPort->text());
+	mClientListener->connectToHost(mServerIP, mServerPort);
 }
 
 void Client::onButtonDisconnectClicked()
@@ -93,8 +83,7 @@ void Client::onButtonDisconnectClicked()
 	delete mClientListener;
 
 	ui->buttonConnect->setEnabled(true);
-	ui->textIP->setEnabled(true);
-	ui->textPort->setEnabled(true);
+	ui->typeCompany->setEnabled(true);
 }
 
 #include <QInputDialog>
@@ -120,6 +109,28 @@ void Client::onButtonGetCertificatesClicked()
 	mClientListener->getCertificates();
 }
 
+void Client::onTypeCompanyActivated(int index)
+{
+	switch(index)
+	{
+	case 0:
+		mServerPublicKey = RSA_E_FEDERAL_AGENCY;
+		mServerIP = ipFederalAgency;
+		mServerPort = portFederalAgency;
+		break;
+	case 1:
+		mServerPublicKey = RSA_E_MINISTRY;
+		mServerIP = ipMinistry;
+		mServerPort = portMinistry;
+		break;
+	default:
+		mServerPublicKey = RSA_E_FEDERAL_AGENCY;
+		mServerIP = ipFederalAgency;
+		mServerPort = portFederalAgency;
+		break;
+	}
+}
+
 void Client::onConnected()
 {
 	printLog("OK. Connected");
@@ -131,12 +142,7 @@ void Client::onError(const QString &text)
 	printLog("Error: " + text);
 	ui->buttonConnect->setEnabled(true);
 	ui->buttonDisconnect->setEnabled(false);
-	ui->textIP->setEnabled(true);
-	ui->textPort->setEnabled(true);
-}
-void Client::onMessage(const QString &text)
-{
-	printLog("Server: " + text);
+	ui->typeCompany->setEnabled(true);
 }
 
 void Client::onRecievedCertificates(const QList<Certificate> &list)

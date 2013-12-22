@@ -6,7 +6,7 @@
 #include <QDebug>
 
 
-Certificate::Certificate() : mValid(false), mSigned(false)
+Certificate::Certificate() : mValid(false), mSigned(false), mInvoked(false)
 {
 }
 
@@ -32,7 +32,9 @@ Certificate::Certificate(const Long &serverID,
 {
 }
 
-Certificate::Certificate(const Certificate &cert) :
+/*Certificate::Certificate(const Certificate &cert) :
+	mServerID(cert.mServerID),
+	mServerName(cert.mServerName),
 	mCliendID(cert.mCliendID),
 	mName(cert.mName),
 	mPublicKey(cert.mPublicKey),
@@ -42,9 +44,10 @@ Certificate::Certificate(const Certificate &cert) :
 	mInvoked(cert.mInvoked),
 	mAvailableHashList(cert.mAvailableHashList),
 	mAvailableCipherList(cert.mAvailableCipherList),
-	mSignRSA(cert.mSignRSA)
+	mSignRSA(cert.mSignRSA),
+	mSignElGamal(cert.mSignElGamal)
 {
-}
+}*/
 
 /**
  * @brief Certificate::toByteArray
@@ -59,7 +62,6 @@ QByteArray Certificate::toByteArray() const
 
 	// mSignRSA
 	{
-		qDebug() << "mSignRSA index: " << ret.size();
 		QByteArray array = mSignRSA.toByteArray();
 		quint16 size = array.size();
 		char buf[2];
@@ -71,7 +73,6 @@ QByteArray Certificate::toByteArray() const
 
 	// mSignElGamal
 	{
-		qDebug() << "mSignElGamal index: " << ret.size();
 		QByteArray array = mSignElGamal.toByteArray();
 		quint16 size = array.size();
 		char buf[2];
@@ -81,7 +82,6 @@ QByteArray Certificate::toByteArray() const
 		ret.append(array);
 	}
 
-	qDebug() << "to: " << ret.size();
 	return ret;
 }
 
@@ -97,7 +97,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 	QByteArray ret;
 	// mServerID
 	{
-		qDebug() << "mServerID index: " << ret.size();
 		QByteArray array = mServerID.toByteArray();
 		quint16 size = array.size();
 		char buf[2];
@@ -109,7 +108,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mServerName
 	{
-		qDebug() << "mServerName index: " << ret.size();
 		quint16 size = mServerName.size();
 		char buf[2];
 		buf[0] = (size >> 8) & 0xff;
@@ -120,7 +118,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mClientID
 	{
-		qDebug() << "mCliendID index: " << ret.size();
 		QByteArray array = mCliendID.toByteArray();
 		quint16 size = array.size();
 		char buf[2];
@@ -132,7 +129,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mName
 	{
-		qDebug() << "mName index: " << ret.size();
 		quint16 size = mName.size();
 		char buf[2];
 		buf[0] = (size >> 8) & 0xff;
@@ -143,7 +139,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mPublicKey
 	{
-		qDebug() << "mPublicKey index: " << ret.size();
 		QByteArray array = mPublicKey.toByteArray();
 		quint16 size = array.size();
 		char buf[2];
@@ -155,7 +150,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mLifeTime
 	{
-		qDebug() << "mLifeTime index: " << ret.size();
 		QString format = mLifeTime.toString("dd.MM.yyyy hh:mm:ss");
 		quint16 size = format.size();
 		char buf[2];
@@ -167,7 +161,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mValid
 	{
-		qDebug() << "mValid index: " << ret.size();
 		quint16 size = 1;
 		char buf[2];
 		buf[0] = (size >> 8) & 0xff;
@@ -178,7 +171,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mSigned
 	{
-		qDebug() << "mSigned index: " << ret.size();
 		quint16 size = 1;
 		char buf[2];
 		buf[0] = (size >> 8) & 0xff;
@@ -189,7 +181,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mInvoked
 	{
-		qDebug() << "mInvoked index: " << ret.size();
 		quint16 size = 1;
 		char buf[2];
 		buf[0] = (size >> 8) & 0xff;
@@ -200,7 +191,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mAvailableHashList
 	{
-		qDebug() << "mAvailableHashList index: " << ret.size();
 		quint16 count = mAvailableHashList.count();
 		{
 			char buf[2];
@@ -210,7 +200,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 		}
 		for (int i = 0; i < count; ++i)
 		{
-			qDebug() << "	[" << i << "]: " << ret.size();
 			QByteArray arr1 = QTextCodec::codecForLocale()->fromUnicode(
 						mAvailableHashList.at(i));
 			quint16 size = arr1.size();
@@ -224,7 +213,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 
 	// mAvailableCipherList
 	{
-		qDebug() << "mAvailableCipherList index: " << ret.size();
 		quint16 count = mAvailableCipherList.count();
 		{
 			char buf[2];
@@ -234,7 +222,6 @@ QByteArray Certificate::toByteArrayWithoutSign() const
 		}
 		for (int i = 0; i < count; ++i)
 		{
-			qDebug() << "	[" << i << "]: " << ret.size();
 			QByteArray arr1 = QTextCodec::codecForLocale()->fromUnicode(
 						mAvailableCipherList.at(i));
 			quint16 size = arr1.size();
@@ -310,8 +297,13 @@ QString Certificate::name() const
 
 void Certificate::update()
 {
-	if (QDateTime::currentDateTime() >= mLifeTime)
+	QDateTime current = QDateTime::currentDateTime();
+	qDebug() << "Current: " << current.toString("dd.MM.yyyy hh:mm:ss");
+	qDebug() << "LifeTime: " << mLifeTime.toString("dd.MM.yyyy hh:mm:ss");
+	if (current >= mLifeTime)
 		mInvoked = true;
+	else
+		mInvoked = false;
 }
 
 void Certificate::operator=(const Certificate &cert)
@@ -330,12 +322,10 @@ void Certificate::operator=(const Certificate &cert)
 
 Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 {
-	qDebug() << "from: " << byteArray.size() << " bytes";
 	Certificate ret;
 	// mServerID
 	int index = 0;
 	{
-		qDebug() << "mServerID index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 		int size = (((quint8) byteArray[index]) << 8) | ((quint8) byteArray[index + 1]);
@@ -351,7 +341,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mName
 	{
-		qDebug() << "mName index: " << index;
 		QByteArray array;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
@@ -369,7 +358,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mClientID
 	{
-		qDebug() << "mClientID index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 		int size = (((quint8) byteArray[index]) << 8) | ((quint8) byteArray[index + 1]);
@@ -385,7 +373,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mName
 	{
-		qDebug() << "mName index: " << index;
 		QByteArray array;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
@@ -403,7 +390,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mPublicKey
 	{
-		qDebug() << "mPublicKey index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 
@@ -420,7 +406,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mLifeTime
 	{
-		qDebug() << "mLifeTime: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 
@@ -438,7 +423,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mValid
 	{
-		qDebug() << "mValid index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 
@@ -457,7 +441,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mSigned
 	{
-		qDebug() << "mSigned index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 
@@ -476,7 +459,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mInvoked
 	{
-		qDebug() << "mInvoked index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 
@@ -494,7 +476,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 	}
 	// mAvailableHashList
 	{
-		qDebug() << "mAvailableHashList index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 
@@ -503,7 +484,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 		for (int i = 0; i < size; ++i)
 		{
-			qDebug() << "	[" << i << "]: " << index;
 			if (index + 2 > byteArray.size())
 				return invalidCertificate();
 			int size1 = (((quint8) byteArray[index]) << 8) | ((quint8) byteArray[index + 1]);
@@ -520,7 +500,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mAvailableCipherList
 	{
-		qDebug() << "mAvailableCipherList index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 
@@ -529,7 +508,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 		for (int i = 0; i < size; ++i)
 		{
-			qDebug() << "	[" << i << "]: " << index;
 			if (index + 2 > byteArray.size())
 				return invalidCertificate();
 			int size1 = (((quint8) byteArray[index]) << 8) | ((quint8) byteArray[index + 1]);
@@ -546,7 +524,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mSignRSA
 	{
-		qDebug() << "mSignRSA index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 
@@ -563,7 +540,6 @@ Certificate Certificate::fromByteArray(const QByteArray &byteArray)
 
 	// mSignElGamal
 	{
-		qDebug() << "mSignElGamal index: " << index;
 		if (index + 2 > byteArray.size())
 			return invalidCertificate();
 

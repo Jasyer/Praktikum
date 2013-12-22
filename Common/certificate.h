@@ -17,7 +17,7 @@ public:
 				const QDateTime &lifeTime,
 				const QList<QString> &availableHashList,
 				const QList<QString> &availableCipherList);
-	Certificate(const Certificate &cert);
+//	Certificate(const Certificate &cert);
 
 	QByteArray toByteArray() const;
 	void signRSA(const Long &key);
@@ -32,9 +32,9 @@ public:
 
 	static Certificate fromByteArray(const QByteArray &byteArray);
 
-private:
-	Certificate(); // deprecate
+	Certificate(); // was deprecate
 
+private:
 	Long mServerID;
 	QString mServerName;
 	Long mCliendID;

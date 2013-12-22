@@ -1,9 +1,9 @@
 #include "dialogserversettings.h"
 #include "ui_dialogserversettings.h"
-#include "serversettings.h"
+#include "commands.h"
 #include "stringconstants.h"
 
-DialogServerSettings::DialogServerSettings(bool pasteSettings, QWidget *parent) :
+DialogServerSettings::DialogServerSettings(quint8 currentType, QWidget *parent) :
 	QDialog(parent),
 	ui(new Ui::DialogServerSettings)
 {
@@ -11,27 +11,39 @@ DialogServerSettings::DialogServerSettings(bool pasteSettings, QWidget *parent) 
 
 	connect(ui->buttonOK, SIGNAL(clicked()), SLOT(accept()));
 	connect(ui->buttomCancel, SIGNAL(clicked()), SLOT(reject()));
-
-	if (pasteSettings)
+	ui->typeCompany->clear();
+	switch (currentType)
 	{
-		ui->textIP->setText(ServerSettings::currentSettings()->get(textServerIP));
-		ui->textPort->setText(ServerSettings::currentSettings()->get(textServerPort));
-	}
-	else
-	{
-		ui->textIP->clear();
-		ui->textPort->clear();
+	case SERVER_FEDERAL_AGENCY:
+		indexMinistry = 0;
+		ui->typeCompany->addItem(textServerNameMinistry);
+		break;
+	case SERVER_MINISTRY:
+		indexFederalAgency = 0;
+		ui->typeCompany->addItem(textServerNameFederalAgency);
+		break;
+	default:
+		indexFederalAgency = 0;
+		ui->typeCompany->addItem(textServerNameFederalAgency);
+		indexMinistry = 1;
+		ui->typeCompany->addItem(textServerNameMinistry);
+		break;
 	}
 }
 
-QString DialogServerSettings::getIP() const
+quint8 DialogServerSettings::getServerType() const
 {
-	return ui->textIP->text();
+	int index = ui->typeCompany->currentIndex();
+	if (index == indexFederalAgency)
+		return SERVER_FEDERAL_AGENCY;
+	else if (index == indexMinistry)
+		return SERVER_MINISTRY;
+	return SERVER_FEDERAL_AGENCY;
 }
 
-QString DialogServerSettings::getPort() const
+QString DialogServerSettings::getServerName() const
 {
-	return ui->textPort->text();
+	return ui->typeCompany->currentText();
 }
 
 DialogServerSettings::~DialogServerSettings()

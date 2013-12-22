@@ -22,16 +22,10 @@ struct InputData
 struct ConnectionKeys
 {
 	char aesKey[32];
-	Long currentKey;
-	Long privateKey;
-	Long publicKey;
-	Long privateSessionKey;
-	Long publicSessionKey;
-
-	bool haveServerKeys;
 	Long serverPublicKey;
-	Long serverPublicSessionKey;
-	ConnectionKeys() : haveServerKeys(false) {}
+	Long sessionKey;
+	bool haveKey;
+	ConnectionKeys() : haveKey(false) {}
 };
 
 struct SocketState
@@ -53,8 +47,8 @@ class ClientListener : public QObject
 	Q_OBJECT
 
 public:
-	explicit ClientListener(const Long &privateKey, const Long &publicKey, Client *parent);
-	void connectToHost(const QString &IP, const QString &port);
+	explicit ClientListener(const Long &serverPublicKey, Client *parent);
+	void connectToHost(const QHostAddress &IP, quint16 port);
 	void disconnectFromHost();
 	void login(const Long &hashPIN);
 	void getCertificates();
@@ -63,8 +57,6 @@ signals:
 	void connected();
 	void error(const QString &text);
 	void disconnected();
-	void message(const QString &msg);
-	void loginned();
 	void recievedCertificates(const QList<Certificate> &list);
 
 	void recheckForReadyRead();
@@ -77,7 +69,7 @@ public slots:
 private:
 	Client *mParent;
 	QTcpSocket mSocket;
-	QString mAddress;
+	QString mAddressString;
 
 	InputData mData;
 	ConnectionKeys mKeys;
@@ -88,7 +80,7 @@ private:
 	 */
 	void sendData(quint16 type, const QByteArray &data);
 	void sendRequest(quint16 type);
-	void sendPublicKeys();
+	void sendSessionKey();
 
 	/*
 	 * Read from socket functions
@@ -101,16 +93,17 @@ private:
 	 */
 	void parseInputData();
 	bool parseStateReady();
+	bool parseStateOK();
 	bool parseTextMessage(const QString &text);
-	bool parsePublicKeys(const QByteArray &byteArray);
 	bool parseLoginStatus(const QByteArray &byteArray);
 	bool parseCertificates(const QByteArray &byteArray);
 
 	/*
 	 * Other
 	 */
-	void makeSessionKeys();
-	void makeKey(const ConnectionKeys &keys);
+	void makeSessionKey();
+	void encryptData(const QByteArray& input, QByteArray &output);
+	void decryptData(const QByteArray& input, QByteArray &output);
 
 };
 

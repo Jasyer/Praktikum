@@ -7,8 +7,10 @@
 #include "longlibrary.h"
 #include "dialogdatabaseitemedit.h"
 #include <QTimer>
+#include <QList>
 #include "cryptoconstants.h"
 #include "cryptograph.h"
+#include "commands.h"
 
 Server::Server(QWidget *parent) :
     QMainWindow(parent),
@@ -16,16 +18,7 @@ Server::Server(QWidget *parent) :
 {
     ui->setupUi(this);
 
-	ServerSettings::currentSettings()->setDefaultSettings();
-
-	char c = ui->typeCompany->currentIndex();
-	char buf[8];
-	derive_key(&c, 1, buf, 8);
-	mServerID = Long(buf, 8);
-	mServerName = ui->typeCompany->currentText();
-
 	// connections of gui signals
-	connect(ui->actionSettings, SIGNAL(triggered()), SLOT(onClickedActionSettings()));
 	connect(ui->actionStart, SIGNAL(triggered()), SLOT(onClickedActionStart()));
 	connect(ui->actionStop, SIGNAL(triggered()), SLOT(onClickedActionStop()));
 	connect(ui->actionAdd_friend_server,
@@ -45,7 +38,9 @@ Server::Server(QWidget *parent) :
 	// mAvailableCipherList
 	mAvailableCipherList.append("AES256");
 
-	QTimer::singleShot(0, this, SLOT(makePrivatePublicKeys()));
+	choiceServer();
+	this->setWindowTitle(mServerName + " Server");
+	QTimer::singleShot(0, this, SLOT(loopUpdateCertificateList()));
 }
 
 Server::~Server()
@@ -69,7 +64,7 @@ void Server::printLog(const QString &text)
 	//	ui->textServerLog->insertHtml("<span style=\" color:#ff0000;\">text</span>");
 }
 
-bool Server::loginUser(const Long &hashPIN, const Long &publicKey)
+bool Server::loginUser(const Long &hashPIN)
 {
 	ClientInfo info = mClientsBase.find(hashPIN);
 	if (info.isNull())
@@ -84,24 +79,22 @@ bool Server::loginUser(const Long &hashPIN, const Long &publicKey)
 		}
 		else
 		{ // create new
-			QDateTime lifeTime = QDateTime::currentDateTime();
-			lifeTime.addMonths(1);
+			QDateTime lifeTime = QDateTime::currentDateTime().addDays(1);
 			Certificate cert(mServerID,
 							 mServerName,
 							 info.clientID(),
 							 info.name(),
-							 publicKey,
+							 mPublicKey,
 							 lifeTime,
 							 mAvailableHashList,
 							 mAvailableCipherList
 							 );
-			Long key = RSA_E;
-			key.setModule(RSA_PHI);
-			key = Long::getInversed(key);
-			cert.signRSA(key);
-			cert.signElGamal(key);
+			cert.signRSA(mPrivateKey);
+			cert.signElGamal(mPrivateKey);
 
 			mCertificates.insert(info, cert);
+			mListCertValid.append(info);
+//			updateCertificateList();
 		}
 		return true;
 	}
@@ -119,17 +112,70 @@ QList<Certificate> Server::getCertificates()
 	return ret;
 }
 
-/**
- * @brief Slot for Server->Settings menu
- */
-void Server::onClickedActionSettings()
+void Server::choiceServer()
 {
-	DialogServerSettings dialog;
-	if (dialog.exec() == QDialog::Accepted)
+	DialogServerSettings dial;
+	while (true)
 	{
-		ServerSettings::currentSettings()->set(textServerIP, dialog.getIP());
-		ServerSettings::currentSettings()->set(textServerPort, dialog.getPort());
+		if (dial.exec() == QDialog::Rejected)
+			exit(0);
+		else
+		{
+			mServerType = dial.getServerType();
+			char buf[8];
+			derive_key((char *) &mServerType, 1, buf, 8);
+			mServerID = Long(buf, 8);
+			switch (mServerType)
+			{
+			case SERVER_FEDERAL_AGENCY:
+				mServerIP = ipFederalAgency;
+				mServerName = dial.getServerName();
+				mServerPort = portFederalAgency;
+				mPublicKey = RSA_E_FEDERAL_AGENCY;
+				mPrivateKey = RSA_D_FEDERAL_AGENCY;
+				return;
+			case SERVER_MINISTRY:
+				mServerIP = ipMinistry;
+				mServerName = dial.getServerName();
+				mServerPort = portMinistry;
+				mPublicKey = RSA_E_MINISTRY;
+				mPrivateKey = RSA_D_MINISTRY;
+				return;
+			default:
+				break;
+			}
+		}
 	}
+}
+
+void Server::updateCertificateList()
+{
+	// update list of valid/invoked certificates
+	QList<ClientInfo>::Iterator it = mListCertValid.begin();
+	while(it != mListCertValid.end())
+	{
+		Certificate &cert = mCertificates[*it];
+		cert.update();
+		if (cert.invoked())
+		{
+			mListCertInvoked.append(*it);
+			it = mListCertValid.erase(it);
+		}
+		else
+			it++;
+	}
+	// update gui
+	ui->listCertValid->clear();
+	ui->certificates->setTabText(0, "Valid(" + QString::number(mListCertValid.size()) + ")");
+	it = mListCertValid.begin();
+	for (; it != mListCertValid.end(); ++it)
+		ui->listCertValid->addItem(mCertificates[*it].name());
+
+	ui->listCertInvoked->clear();
+	ui->certificates->setTabText(1, "Invoked(" + QString::number(mListCertInvoked.size()) + ")");
+	it = mListCertInvoked.begin();
+	for (; it != mListCertInvoked.end(); ++it)
+		ui->listCertInvoked->addItem(mCertificates[*it].name());
 }
 
 /**
@@ -137,12 +183,11 @@ void Server::onClickedActionSettings()
  */
 void Server::onClickedActionStart()
 {
-	QString servIP = M_SETTING(textServerIP);
-	QString servPort = M_SETTING(textServerPort);
-	printLog("Starting server at " + servIP + ":" + servPort + "...");
+	QString address = mServerIP.toString() + ":" + QString::number(mServerPort);
+	printLog("Starting server at " + address + "...");
 
-	if (mServer.listen(QHostAddress(servIP), (quint16) servPort.toInt()))
-		printLog("Success");
+	if (mServer.listen(mServerIP, mServerPort))
+		printLog("OK. Started server on " + address);
 }
 
 /**
@@ -156,16 +201,31 @@ void Server::onClickedActionStop()
 
 void Server::onClickedActionAdd_friend_server()
 {
-	DialogServerSettings dialog;
+	DialogServerSettings dialog(mServerType);
 	if (dialog.exec() == QDialog::Accepted)
 	{
-		QTcpSocket *socket = new QTcpSocket;
-		anotherServerListener = new ServerListener(socket, mPrivateKey, mPublicKey, this, true);
+		QHostAddress srvIP;
+		quint16 srvPort;
+		Long publicKey;
+		switch (dialog.getServerType())
+		{
+		case SERVER_FEDERAL_AGENCY:
+			srvIP = ipFederalAgency;
+			srvPort = portFederalAgency;
+			publicKey = RSA_E_FEDERAL_AGENCY;
+			break;
+		case SERVER_MINISTRY:
+			srvIP = ipMinistry;
+			srvPort = portMinistry;
+			publicKey = RSA_E_MINISTRY;
+			break;
+		}
+		anotherServerListener = new ServerListener(new QTcpSocket, Long(), publicKey, this, true);
 		connect(anotherServerListener, SIGNAL(deleteMe()), SLOT(onDeleteMe()));
 		connect(anotherServerListener,
 				SIGNAL(addCertificates(QList<Certificate>)),
 				SLOT(onAddCertificates(QList<Certificate>)));
-		anotherServerListener->connectToServer(dialog.getIP(), dialog.getPort());
+		anotherServerListener->connectToServer(srvIP, srvPort);
 	}
 }
 
@@ -213,7 +273,7 @@ void Server::onDeleteMe()
 
 void Server::onAddCertificates(const QList<Certificate> &certificates)
 {
-	Long key = RSA_E;
+	Long key = mPrivateKey;
 	key.setModule(RSA_PHI);
 	key = Long::getInversed(key);
 
@@ -227,23 +287,20 @@ void Server::onAddCertificates(const QList<Certificate> &certificates)
 	printLog("Certificates from another server included in base");
 }
 
-void Server::makePrivatePublicKeys()
+void Server::makePrivateKey()
 {
-	printLog("Generating private key...");
-	// private key
-	int random_bits_size = GROUP_PRIME.getSize();
-	char *random_bits = new char[random_bits_size];
-	drbg_generate(random_bits, random_bits_size);
-	mPrivateKey = Long(random_bits, random_bits_size);
-	mPrivateKey.setModule(GROUP_PRIME);
-	delete []random_bits;
+	printLog("Calculating private key...");
 
-	printLog("Calculating public key...");
-	// public key
-	mPublicKey = GROUP_GENERATOR;
-	mPublicKey.setModule(GROUP_PRIME);
-	mPublicKey.pow(mPrivateKey);
+	mPrivateKey = mPublicKey;
+	mPrivateKey.setModule(RSA_PHI);
+	mPrivateKey = Long::getInversed(mPrivateKey);
 
-	printLog("OK. Private & public keys generated");
+	printLog("OK. Private key generated");
+}
+
+void Server::loopUpdateCertificateList()
+{
+	updateCertificateList();
+	QTimer::singleShot(10000, this, SLOT(loopUpdateCertificateList()));
 }
 

@@ -20,9 +20,9 @@ SOURCES += main.cpp\
     ../Common/certificate.cpp
 
 HEADERS  += client.h \
-    ../include/commands.h \
     clientlistener.h \
     ../include/cryptoconstants.h \
-    ../Common/certificate.h
+    ../Common/certificate.h \
+    ../include/commands.h
 
 FORMS    += client.ui

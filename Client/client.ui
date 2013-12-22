@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>331</width>
     <height>272</height>
    </rect>
   </property>
@@ -17,40 +17,14 @@
    <widget class="QPushButton" name="buttonConnect">
     <property name="geometry">
      <rect>
-      <x>80</x>
-      <y>10</y>
+      <x>10</x>
+      <y>50</y>
       <width>75</width>
-      <height>23</height>
+      <height>51</height>
      </rect>
     </property>
     <property name="text">
      <string>Connect</string>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="textIP">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>61</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>127.0.0.1</string>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="textPort">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>40</y>
-      <width>61</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>1919</string>
     </property>
    </widget>
    <widget class="QTextBrowser" name="textClientLog">
@@ -58,7 +32,7 @@
      <rect>
       <x>10</x>
       <y>170</y>
-      <width>381</width>
+      <width>311</width>
       <height>71</height>
      </rect>
     </property>
@@ -66,10 +40,10 @@
    <widget class="QPushButton" name="buttonLogIn">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>80</y>
-      <width>75</width>
-      <height>23</height>
+      <x>90</x>
+      <y>50</y>
+      <width>81</width>
+      <height>51</height>
      </rect>
     </property>
     <property name="text">
@@ -82,10 +56,10 @@
     </property>
     <property name="geometry">
      <rect>
-      <x>80</x>
-      <y>40</y>
+      <x>10</x>
+      <y>110</y>
       <width>75</width>
-      <height>23</height>
+      <height>51</height>
      </rect>
     </property>
     <property name="text">
@@ -95,7 +69,7 @@
    <widget class="QTabWidget" name="tabWidget">
     <property name="geometry">
      <rect>
-      <x>250</x>
+      <x>180</x>
       <y>10</y>
       <width>141</width>
       <height>151</height>
@@ -147,14 +121,24 @@
    <widget class="QPushButton" name="buttonGetCertificates">
     <property name="geometry">
      <rect>
-      <x>10</x>
+      <x>90</x>
       <y>110</y>
-      <width>101</width>
-      <height>23</height>
+      <width>81</width>
+      <height>51</height>
      </rect>
     </property>
     <property name="text">
-     <string>Get certificates</string>
+     <string>Certificates</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="typeCompany">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>161</width>
+      <height>31</height>
+     </rect>
     </property>
    </widget>
   </widget>
@@ -163,7 +147,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>400</width>
+     <width>331</width>
      <height>21</height>
     </rect>
    </property>

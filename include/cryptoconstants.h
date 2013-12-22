@@ -22,8 +22,13 @@ static const Long GROUP_GENERATOR = Long(7);//Long(2);
 
 static const Long RSA_P = Long(1046527);
 static const Long RSA_Q = Long(199933);
-static const Long RSA_E = Long(3);
+//static const Long RSA_E = Long(3);
 static const Long RSA_PHI = Long(QString("30b7520608"));
 static const Long RSA_N = Long(QString("30b7650b03"));
+
+static const Long RSA_E_FEDERAL_AGENCY = Long(5);
+static const Long RSA_D_FEDERAL_AGENCY = Long("137c87359d");
+static const Long RSA_E_MINISTRY = Long(7);
+static const Long RSA_D_MINISTRY= Long("22cc16044f");
 
 #endif // CRYPTOCONSTANTS_H

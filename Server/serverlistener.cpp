@@ -24,27 +24,34 @@ ServerListener::ServerListener(QTcpSocket *socket, const Long &privateKey, const
 
 	mData.clear();
 	mState.clear();
-	makeSessionKeys();
 
 	if (!mConnectToServer)
+	{
+		mState.waiting = true;
+		mState.waitingType = TYPE_SESSION_KEY;
+		mParent->printLog("Waiting session key from client...");
 		sendCommand(STATE_READY);
+	}
 	else
 	{
 		mState.waiting = true;
 		mState.waitingType = STATE_READY;
+		makeSessionKey();
 	}
 }
 
-void ServerListener::connectToServer(const QString &IP, const QString &port)
+void ServerListener::connectToServer(const QHostAddress &IP, quint16 port)
 {
+	if (!mConnectToServer)
+		return;
 	connect(mSocket, SIGNAL(connected()), SLOT(onConnected()));
 	connect(mSocket,
 			SIGNAL(error(QAbstractSocket::SocketError)),
 			SLOT(onError(QAbstractSocket::SocketError)));
 
-	mConnectToServerAddress = IP + ":" + port;
+	mConnectToServerAddress = IP.toString() + ":" + QString::number(port);
 	mParent->printLog("Connecting to " + mConnectToServerAddress + "...");
-	mSocket->connectToHost(QHostAddress(IP), port.toInt());
+	mSocket->connectToHost(IP, port);
 }
 
 ServerListener::~ServerListener()
@@ -100,10 +107,16 @@ void ServerListener::onReadyRead()
 	if (mSocket->bytesAvailable() < mData.size)
 		return;
 
-	mData.type = readUInt16();
-	mData.size -= 2; // 2 bytes for type
+	QByteArray encryptedData = mSocket->read(mData.size);
+	QByteArray decryptedData;
+	if (mKeys.haveKey)
+		decryptData(encryptedData, decryptedData);
+	else
+		decryptedData = encryptedData;
 
-	mData.data = mSocket->read(mData.size);
+	mData.size = decryptedData.size();
+	mData.type = (((quint8) decryptedData[0]) << 8) | ((quint8) decryptedData[1]);
+	mData.data = decryptedData.mid(2);
 
 	if (mConnectToServer)
 		parseInputDataFromAnotherServer();
@@ -146,59 +159,40 @@ QString fromInt(int n)
 
 void ServerListener::sendData(quint16 type, const QByteArray &data)
 {
-	//mParent->printLog("SENDING " + fromInt(type));
+	QByteArray sourceData;
+	{
+		char buf[2];
+		buf[0] = (type >> 8) & 0xff;
+		buf[1] = type & 0xff;
+		sourceData.append(buf, 2);
+		sourceData.append(data);
+	}
 
-	quint32 size = data.size() + 2;
-	writeUInt32(size);
-	writeUInt16(type);
-	mSocket->write(data);
+	// encrypting
+	QByteArray encryptedData;
+	if (mKeys.haveKey)
+		encryptData(sourceData, encryptedData);
+	else
+		encryptedData = sourceData;
+
+	// size
+	{
+		quint32 size = encryptedData.size();
+		char buf[4];
+		buf[0] = (size >> 24) & 0xff;
+		buf[1] = (size >> 16) & 0xff;
+		buf[2] = (size >> 8) & 0xff;
+		buf[3] = size & 0xff;
+		mSocket->write(buf, 4);
+	}
+
+	// data
+	mSocket->write(encryptedData);
 }
 
 void ServerListener::sendText(const QString &text)
 {
 	sendData(TYPE_TEXT_MESSAGE, QTextCodec::codecForLocale()->fromUnicode(text));
-}
-
-/**
- * @brief ServerListener::sendPublicKeys
- *
- * Keys block:
- * [ public_key_size | public_session_key_size | public_key | public_session_key ]
- * [    2 bytes      |        2 bytes          |            |                    ]
- */
-void ServerListener::sendPublicKeys()
-{
-	QByteArray keys_block;
-
-	// public_key_size
-	QByteArray public_key_array = mKeys.publicKey.toByteArray();
-	mParent->printLog("Sending public key: " + mKeys.publicKey.toString());
-	{
-		quint16 public_key_size = public_key_array.size();
-		char buf[2];
-		buf[0] = (public_key_size >> 8) & 0xff;
-		buf[1] = public_key_size & 0xff;
-		keys_block.append(buf, 2);
-	}
-
-	// public_session_key_size
-	mParent->printLog("Sending session public key: " + mKeys.publicSessionKey.toString());
-	QByteArray public_session_key_array = mKeys.publicSessionKey.toByteArray();
-	{
-		quint16 public_session_key_size = public_session_key_array.size();
-		char buf[2];
-		buf[0] = (public_session_key_size >> 8) & 0xff;
-		buf[1] = public_session_key_size & 0xff;
-		keys_block.append(buf, 2);
-	}
-
-	// public_key
-	keys_block.append(public_key_array);
-
-	// public_session_key
-	keys_block.append(public_session_key_array);
-
-	sendData(TYPE_PUBLIC_KEYS, keys_block);
 }
 
 /**
@@ -285,8 +279,8 @@ void ServerListener::parseInputData()
 		bool status = false;
 		switch(mData.type)
 		{
-		case TYPE_PUBLIC_KEYS:
-			status = parsePublicKeys(mData.data);
+		case TYPE_SESSION_KEY:
+			status = parseSessionKey(mData.data);
 			break;
 		default:
 			break;
@@ -308,12 +302,6 @@ void ServerListener::parseInputData()
 	// requests may be either if waiting or if not waiting
 	switch(mData.type)
 	{
-	case REQUEST_PUBLIC_KEYS:
-		sendPublicKeys();
-		mState.waiting = true;
-		mState.waitingType = TYPE_PUBLIC_KEYS;
-		sendCommand(REQUEST_PUBLIC_KEYS); // request to client for keys to make common key
-		break;
 	case REQUEST_CERTIFICATES:
 		sendCertificates();
 		break;
@@ -323,63 +311,38 @@ void ServerListener::parseInputData()
 	mData.clear();
 }
 
-bool ServerListener::parsePublicKeys(const QByteArray &byteArray)
+bool ServerListener::parseSessionKey(const QByteArray &byteArray)
 {
-	// public_key_size section
-	quint16 public_key_size;
-	public_key_size = byteArray[0];
-	public_key_size <<= 8;
-	public_key_size |= byteArray[1];
+	mParent->printLog("OK. Session key recieved");
+	mKeys.sessionKey = Long::fromByteArray(byteArray);
+	mKeys.sessionKey.setModule(RSA_N);
+	mKeys.sessionKey.pow(mKeys.privateKey);
+	mKeys.sessionKey.deleteModule();
 
-	// public_session_key_size section
-	quint16 public_session_key_size;
-	public_session_key_size = byteArray[2];
-	public_session_key_size <<= 8;
-	public_session_key_size |= byteArray[3];
-
-	// check integrity
-	if (public_session_key_size + public_key_size + 4 != byteArray.size())
+	mParent->printLog("Calculating AES key...");
+	// aes key
 	{
-		qDebug() << "Incorrect keys message";
-		return false;
+		int hash_m_size = mKeys.sessionKey.bytesNeed();
+		char *hash_m = new char[hash_m_size];
+		mKeys.sessionKey.toChar(hash_m, 0);
+		calc_sha256_hash(hash_m, hash_m_size, mKeys.aesKey, 0);
+		delete []hash_m;
 	}
+	mParent->printLog("OK. AES key calculated");
 
-	// public_key section
-	{
-		int public_key_index = 4;
-		QByteArray public_key_array = byteArray.mid(public_key_index, public_key_size);
-		if (!Long::isLong(public_key_array))
-		{
-			qDebug() << "Incorrect public key";
-			return false;
-		}
-		mKeys.clientPublicKey = Long::fromByteArray(public_key_array);
-		mParent->printLog("Recieved client's public key: " + mKeys.clientPublicKey.toString());
-	}
-
-	// public_session_key section
-	{
-		int public_session_key_index = 4 + public_key_size;
-		QByteArray public_session_key_array = byteArray.mid(public_session_key_index,
-															public_session_key_size);
-		if (!Long::isLong(public_session_key_array))
-		{
-			qDebug() << "Incorrect public session key";
-			return false;
-		}
-		mKeys.clientPublicSessionKey = Long::fromByteArray(public_session_key_array);
-		mParent->printLog("Recieved client's session public key: "
-						  + mKeys.clientPublicSessionKey.toString());
-	}
-	mKeys.haveClientKeys = true;
-	makeKey(mKeys);
+	sendCommand(STATE_OK);
+	mParent->printLog("OK. Secure conection is established");
+	mKeys.haveKey = true;
+	mParent->printLog("Key = " + mKeys.sessionKey.toString());
+//	mParent->printLog("Public = " + mKeys.publicKey.toString());
+//	mParent->printLog("Private = " + mKeys.privateKey.toString());
 	return true;
 }
 
 void ServerListener::parseLogin(const QByteArray &byteArray)
 {
 	Long hashPIN = Long::fromByteArray(byteArray);
-	if (mParent->loginUser(hashPIN, mKeys.clientPublicKey))
+	if (mParent->loginUser(hashPIN))
 	{
 		sendAnswer(TYPE_LOGIN_STATUS, ANSWER_LOGIN_OK);
 		mParent->printLog("ANSWER: OK");
@@ -402,17 +365,19 @@ void ServerListener::parseInputDataFromAnotherServer()
 	{
 	case STATE_READY:
 		mState.waiting = true;
-		mState.waitingType = TYPE_PUBLIC_KEYS;
-		sendCommand(REQUEST_PUBLIC_KEYS);
+		mState.waitingType = STATE_OK;
+		sendSessionKey();
 		break;
-	case TYPE_PUBLIC_KEYS:
-		parsePublicKeys(mData.data);
-		sendPublicKeys();
+	case STATE_OK:
+		mParent->printLog("OK. Secure connection is established");
+		mKeys.haveKey = true;
 		mState.waiting = true;
 		mState.waitingType = TYPE_CERTIFICATES;
+		mParent->printLog("Sending request for certificates...");
 		sendCommand(REQUEST_CERTIFICATES);
 		break;
 	case TYPE_CERTIFICATES:
+		mParent->printLog("OK. Certificates recieved");
 		parseCertificates(mData.data);
 		mState.clear();
 		emit deleteMe();
@@ -421,6 +386,40 @@ void ServerListener::parseInputDataFromAnotherServer()
 		break;
 	}
 	mData.clear();
+}
+
+void ServerListener::makeSessionKey()
+{
+	mParent->printLog("Generating session key...");
+	// private key
+	int random_bits_size = RSA_N.getSize();
+	char *random_bits = new char[random_bits_size];
+	drbg_generate(random_bits, random_bits_size);
+	mKeys.sessionKey = Long(random_bits, random_bits_size);
+	mKeys.sessionKey.setModule(RSA_N);
+	delete []random_bits;
+
+	mParent->printLog("Calculating AES key...");
+	// aes key
+	{
+		int hash_m_size = mKeys.sessionKey.bytesNeed();
+		char *hash_m = new char[hash_m_size];
+		mKeys.sessionKey.toChar(hash_m, 0);
+		calc_sha256_hash(hash_m, hash_m_size, mKeys.aesKey, 0);
+		delete []hash_m;
+	}
+
+	mParent->printLog("OK. Session & AES keys generated");
+}
+
+void ServerListener::sendSessionKey()
+{
+	mParent->printLog("Sending common key to server...");
+	Long ciph = mKeys.sessionKey;
+	ciph.pow(mKeys.publicKey);
+	ciph.deleteModule(); // IMPORTANT!
+	sendData(TYPE_SESSION_KEY, ciph.toByteArray());
+	mParent->printLog("Waiting for answer...");
 }
 
 void ServerListener::parseCertificates(const QByteArray &byteArray)
@@ -455,63 +454,83 @@ void ServerListener::parseCertificates(const QByteArray &byteArray)
 	emit addCertificates(certificates);
 }
 
-void ServerListener::makeSessionKeys()
+QString toHex(quint8 x)
 {
-	mParent->printLog("Generating session private key...");
-	// private key
-	int random_bits_size = GROUP_PRIME.getSize();
-	char *random_bits = new char[random_bits_size];
-	drbg_generate(random_bits, random_bits_size);
-	mKeys.privateSessionKey = Long(random_bits, random_bits_size);
-	mKeys.privateSessionKey.setModule(GROUP_PRIME);
-	delete []random_bits;
+	QString ret;
+	if ((x & 0xf0) > 0x90)
+		ret += (char) (((x >> 4) & 0x0f) - 0x0a + 'a');
+	else
+		ret += (char) (((x >> 4) & 0x0f) + '0');
 
-	mParent->printLog("Calculating session public key...");
-	// public key
-	mKeys.publicSessionKey = GROUP_GENERATOR;
-	mKeys.publicSessionKey.setModule(GROUP_PRIME);
-	mKeys.publicSessionKey.pow(mKeys.privateSessionKey);
-
-	mParent->printLog("OK. Session private & public keys generated");
+	if ((x & 0x0f) > 0x09)
+		ret += (char) ((x & 0x0f) - 0x0a + 'a');
+	else
+		ret += (char) ((x & 0x0f) + '0');
+	return ret;
 }
 
-void ServerListener::makeKey(const ConnectionKeys &keys)
+void printByteArray(const QByteArray &byteArray)
 {
-	mParent->printLog("Generating common key...");
+	QString buf = "";
+	for (int i = 0; i < byteArray.size(); ++i)
+	{
+		buf += toHex(byteArray[i]);
+		if (((i + 1) & 0xf) == 0)
+		{
+			qDebug() << buf;
+			buf = "";
+		}
+	}
+	if (buf != "")
+		qDebug() << buf;
+}
 
-	char hash[32];
+void ServerListener::encryptData(const QByteArray &input, QByteArray &output)
+{
+	qDebug() << "Server Encrypt Input:";
+	printByteArray(input);
 
-	Long mod(GROUP_PRIME);
-	mod.dec();
-	int hash_m_size = mKeys.publicSessionKey.bytesNeed();
-	char *hash_m = new char[hash_m_size];
-	mKeys.publicSessionKey.toChar(hash_m, 0);
-	calc_sha256_hash(hash_m, hash_m_size, hash, 0);
-	delete []hash_m;
-	Long e(hash, 32);
-	e.setModule(mod);
+	int in_size = input.size();
+	char *in = new char[in_size];
+	for (int i = 0; i < in_size; ++i)
+		in[i] = input[i];
+	char iv[16] = {0};
 
-	hash_m_size = mKeys.clientPublicSessionKey.bytesNeed();
-	hash_m = new char[hash_m_size];
-	mKeys.clientPublicSessionKey.toChar(hash_m, 0);
-	calc_sha256_hash(hash_m, hash_m_size, hash, 0);
-	delete []hash_m;
-	Long d(hash, 32);
-	d.setModule(mod);
+	int out_size;
+	encrypt_aes256_cbc(in, in_size, mKeys.aesKey, 0, &out_size, iv, 16);
+	char *out = new char[out_size];
+	encrypt_aes256_cbc(in, in_size, mKeys.aesKey, out, &out_size, iv, 16);
 
-	mKeys.currentKey = mKeys.clientPublicKey;
-	//mKeys.currentKey.setModule(GROUP_PRIME);
-	mKeys.currentKey.pow(e);
-	mKeys.currentKey = mKeys.currentKey * mKeys.clientPublicSessionKey;
-	Long a1 = mKeys.privateSessionKey;
-	a1.setModule(mod);
-	Long a2 = d;
-	a2.setModule(mod);
-	Long a3 = mKeys.privateKey;
-	a3.setModule(mod);
-	Long power = a1 + a2 * a3;
-	mKeys.currentKey.pow(power);
+	output.clear();
+	output.append(out, out_size);
+	delete []in;
+	delete []out;
 
-	mParent->printLog("OK. Common key generated");
-	mParent->printLog("key = " + mKeys.currentKey.toString());
+	qDebug() << "Server Encrypt Output:";
+	printByteArray(output);
+}
+
+void ServerListener::decryptData(const QByteArray &input, QByteArray &output)
+{
+	qDebug() << "Server Decrypt Input:";
+	printByteArray(input);
+
+	int in_size = input.size();
+	char *in = new char[in_size];
+	for (int i = 0; i < in_size; ++i)
+		in[i] = input[i];
+	char iv[16] = {0};
+
+	int out_size;
+	decrypt_aes256_cbc(in, in_size, mKeys.aesKey, 0, &out_size, iv, 16);
+	char *out = new char[out_size];
+	decrypt_aes256_cbc(in, in_size, mKeys.aesKey, out, &out_size, iv, 16);
+
+	output.clear();
+	output.append(out, out_size);
+	delete []in;
+	delete []out;
+
+	qDebug() << "Server Decrypt Output:";
+	printByteArray(output);
 }

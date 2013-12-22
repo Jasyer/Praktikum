@@ -5,6 +5,7 @@
 #include "clientlistener.h"
 #include "longlibrary.h"
 #include "certificate.h"
+#include <QHostAddress>
 
 namespace Ui {
 class Client;
@@ -28,27 +29,24 @@ private slots:
 	void onButtonDisconnectClicked();
 	void onButtonLogInClicked();
 	void onButtonGetCertificatesClicked();
+	void onTypeCompanyActivated(int index);
 
 	/*
 	 * ClientListener slots
 	 */
 	void onConnected();
 	void onError(const QString &text);
-	void onMessage(const QString &text);
 	void onRecievedCertificates(const QList<Certificate> &list);
-
-	/*
-	 * other slots
-	 */
-	void makePrivatePublicKey();
 
 private:
 	Ui::Client *ui;
 	ClientListener *mClientListener;
 	void connectSignalsFromServerListener();
+	void loadCompanyList();
 
-	Long mPrivateKey;
-	Long mPublicKey;
+	QHostAddress mServerIP;
+	quint16 mServerPort;
+	Long mServerPublicKey;
 
 	QList<Certificate> mCertificates;
 };
